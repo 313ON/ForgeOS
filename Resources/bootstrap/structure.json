@@ -1,0 +1,31 @@
+{
+  "directories": [
+    "Backend",
+    "Backend/app",
+    "Backend/app/api",
+    "Backend/app/core",
+    "Backend/app/models",
+    "Backend/app/repositories",
+    "Backend/app/schemas",
+    "Backend/app/services",
+    "Backend/app/utils",
+    "Backend/tests",
+    "Database",
+    "Deployment",
+    "Docs",
+    "Frontend",
+    "Logs",
+    "Resources/assets",
+    "Resources/bootstrap",
+    "Resources/icons",
+    "Resources/templates"
+  ],
+  "files": [
+    ".gitignore",
+    "README.md",
+    "Backend/app/__init__.py",
+    "Backend/app/main.py",
+    "Backend/app/core/__init__.py",
+    "Backend/app/core/logger.py"
+  ]
+}

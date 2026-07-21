@@ -1,0 +1,15 @@
+[project]
+name = "forgeos"
+version = "0.1.0"
+description = "ForgeOS - IT Engineering Platform"
+readme = "README.md"
+requires-python = ">=3.12"
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+pythonpath = ["Backend"]

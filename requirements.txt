@@ -1,0 +1,15 @@
+# Core Framework
+fastapi
+
+# ASGI Server
+uvicorn[standard]
+
+# Configuration
+pydantic
+pydantic-settings
+
+# Database
+sqlalchemy
+
+# Environment
+python-dotenv
