@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ForgeOS · IT Operations</title>
+  <link rel="stylesheet" href="/static/css/variables.css">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="stylesheet" href="/static/css/theme.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          boxShadow: {
+            cyan: "0 0 40px rgba(6, 182, 212, 0.12)",
+            emerald: "0 0 40px rgba(16, 185, 129, 0.12)"
+          }
+        }
+      }
+    }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+  </style>
+</head>
+<body class="h-full text-slate-200 antialiased" x-data="forgeApp()" x-init="init()">
+  <svg class="neural-mesh" viewBox="0 0 1600 1000" preserveAspectRatio="none" aria-hidden="true">
+    <g fill="none" stroke="url(#mesh-gradient)" stroke-width="1">
+      <path d="M0 220C190 40 320 360 520 180S850 90 1040 270s350-120 560-40"/>
+      <path d="M0 620C220 440 330 720 570 520s300-80 490 70 320-40 540-180"/>
+      <path d="M110 0c80 230 260 210 310 420s230 250 420 60 370-100 540 170"/>
+      <path d="M900 0c-40 230-150 300-40 470s280 110 400 330"/>
+      <circle cx="520" cy="180" r="7"/><circle cx="1040" cy="270" r="7"/><circle cx="570" cy="520" r="7"/><circle cx="1280" cy="410" r="7"/>
+    </g>
+    <defs><linearGradient id="mesh-gradient" x1="0" x2="1"><stop stop-color="#06b6d4"/><stop offset="1" stop-color="#10b981"/></linearGradient></defs>
+  </svg>
+  <div class="min-h-full lg:flex">
+    <aside class="app-sidebar fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-800/80 bg-slate-950/80 backdrop-blur-xl lg:flex lg:flex-col">
+      <div class="flex h-20 items-center gap-3 border-b border-slate-800/70 px-6">
+        <div class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-slate-950 shadow-cyan">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="3.2" fill="currentColor"/><circle cx="4" cy="7" r="1.5" fill="currentColor"/><circle cx="20" cy="7" r="1.5" fill="currentColor"/><circle cx="5" cy="18" r="1.5" fill="currentColor"/><circle cx="19" cy="18" r="1.5" fill="currentColor"/><path d="m9.5 10-4.2-2M14.5 10l4.2-2M9.5 14l-3.8 3M14.5 14l3.8 3"/>
+          </svg>
+        </div>
+        <div>
+          <div class="font-semibold tracking-wide text-white">ForgeOS</div>
+          <div class="text-xs text-slate-500" data-i18n="brand.subtitle">IT Operations</div>
+          <div class="mt-1 text-[10px] font-medium text-cyan-300/80" data-i18n="tagline">Live &amp; Living Operations OS</div>
+        </div>
+      </div>
+
+      <nav class="flex-1 space-y-2 px-4 py-6">
+        <template x-for="item in navigation" :key="item.id">
+          <button @click="navigate(item.id)" class="group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition"
+                  :class="page === item.id ? 'bg-cyan-400/10 text-cyan-300 ring-1 ring-cyan-400/20' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'">
+            <span x-html="item.icon" class="h-5 w-5"></span>
+            <span x-text="translated(item.labelKey, item.label)"></span>
+            <span x-show="item.id === 'dashboard' && summary.warning_count" x-text="summary.warning_count"
+                  class="ml-auto rounded-full bg-amber-400/10 px-2 py-0.5 text-xs text-amber-300"></span>
+          </button>
+        </template>
+      </nav>
+
+      <div class="space-y-2 px-4">
+        <p class="px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">Reports</p>
+        <button @click="exportExcel()" class="sidebar-item w-full rounded-xl py-3 text-sm font-medium text-slate-400 transition hover:bg-emerald-400/10 hover:text-emerald-300">
+          <span class="text-emerald-300">▦</span><span data-i18n="export_excel">Export Excel</span>
+        </button>
+        <button @click="exportPdf()" class="sidebar-item w-full rounded-xl py-3 text-sm font-medium text-slate-400 transition hover:bg-cyan-400/10 hover:text-cyan-300">
+          <span class="text-cyan-300">▤</span><span data-i18n="export_pdf">Export PDF</span>
+        </button>
+      </div>
+
+      <div class="m-4 rounded-2xl border border-emerald-400/10 bg-emerald-400/5 p-4">
+        <div class="flex items-center gap-2 text-xs font-semibold text-emerald-300">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981]"></span>
+          <span data-i18n="status.api_online">API ONLINE</span>
+        </div>
+        <p class="mt-2 text-xs leading-5 text-slate-500" data-i18n="status.local_workspace">Local-first inventory workspace ready for operations.</p>
+      </div>
+    </aside>
+
+    <div class="app-content min-w-0 flex-1">
+      <header class="sticky top-0 z-30 border-b border-slate-800/70 bg-slate-950/75 backdrop-blur-xl">
+        <div class="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center gap-3">
+            <div class="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-slate-950 lg:hidden">
+              <span class="font-black">F</span>
+            </div>
+            <div>
+              <h1 class="text-lg font-semibold text-white" x-text="pageTitle"></h1>
+              <p class="hidden text-xs text-slate-500 sm:block" data-i18n="header.tagline">Operational clarity, without the overhead.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center rounded-xl border border-slate-800 bg-slate-900/70 p-1 text-xs font-semibold">
+              <button @click="setLanguage('fa')" data-lang-label="fa" class="rounded-lg px-2 py-1 text-slate-500 transition hover:text-cyan-300">FA</button>
+              <button @click="setLanguage('en')" data-lang-label="en" class="rounded-lg px-2 py-1 text-cyan-300 transition hover:text-cyan-300">EN</button>
+            </div>
+            <button @click="refreshCurrent()" class="rounded-xl border border-slate-800 bg-slate-900/70 p-2.5 text-slate-400 transition hover:border-cyan-400/30 hover:text-cyan-300" title="Refresh" data-i18n-attr="title:header.refresh">
+              <svg class="h-4 w-4" :class="loading ? 'animate-spin' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/>
+              </svg>
+            </button>
+            <a href="/docs" target="_blank" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110">
+              <span data-i18n="header.api_docs">API Docs</span>
+            </a>
+          </div>
+        </div>
+        <div class="flex gap-1 overflow-x-auto border-t border-slate-800/50 px-3 py-2 lg:hidden">
+          <template x-for="item in navigation" :key="item.id">
+            <button @click="navigate(item.id)" x-text="translated(item.labelKey, item.label)"
+                    class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium"
+                    :class="page === item.id ? 'bg-cyan-400/10 text-cyan-300' : 'text-slate-500'"></button>
+          </template>
+        </div>
+      </header>
+
+      <main class="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <section x-show="page === 'dashboard'" x-transition.opacity>
+          <div class="mb-7 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <p class="text-sm font-medium text-cyan-400" data-i18n="dashboard.overline">OPERATIONS OVERVIEW</p>
+              <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="dashboard.title">Infrastructure at a glance</h2>
+            </div>
+            <p class="text-xs text-slate-500"><span data-i18n="dashboard.updated">Updated</span> <span x-text="lastUpdated"></span></p>
+          </div>
+
+          <div x-show="loading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <template x-for="index in 4" :key="index">
+              <div class="h-36 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+                <div class="h-4 w-24 rounded bg-slate-800"></div><div class="mt-7 h-8 w-16 rounded bg-slate-800"></div>
+              </div>
+            </template>
+          </div>
+
+          <div x-show="!loading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <template x-for="card in kpiCards" :key="card.label">
+              <a :href="card.href" class="card-glossy relative block overflow-hidden rounded-2xl p-5"
+                   :class="card.glow">
+                <div class="absolute -right-10 -top-10 h-28 w-28 rounded-full blur-3xl" :class="card.orb"></div>
+                <div class="relative flex items-start justify-between">
+                  <div>
+                    <p class="text-sm text-slate-400" x-text="card.label"></p>
+                    <p class="mt-3 text-3xl font-semibold tracking-tight text-white" x-text="card.value"></p>
+                    <p class="mt-2 text-xs text-slate-500" x-text="card.caption"></p>
+                  </div>
+                  <div class="rounded-xl p-2.5" :class="card.iconBg">
+                    <span class="block h-5 w-5" x-html="card.icon"></span>
+                  </div>
+                </div>
+              </a>
+            </template>
+          </div>
+
+          <div class="mt-6 grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
+            <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-md">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="font-semibold text-white">Warnings</h3>
+                  <p class="mt-1 text-xs text-slate-500">Items needing operational attention</p>
+                </div>
+                <span class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                      :class="summary.warning_count ? 'bg-amber-400/10 text-amber-300' : 'bg-emerald-400/10 text-emerald-300'"
+                      x-text="summary.warning_count + ' open'"></span>
+              </div>
+              <div class="mt-5 space-y-3">
+                <template x-for="warning in warningGroups" :key="warning.key">
+                  <button @click="navigate('assets')" class="flex w-full items-center gap-4 rounded-xl border border-slate-800/70 bg-slate-950/40 p-4 text-left transition hover:border-slate-700 hover:bg-slate-800/50">
+                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl" :class="warning.color">
+                      <span x-html="warning.icon" class="h-5 w-5"></span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-medium text-slate-200" x-text="warning.title"></p>
+                      <p class="mt-1 truncate text-xs text-slate-500" x-text="warning.detail"></p>
+                    </div>
+                    <span class="text-lg font-semibold text-white" x-text="warning.count"></span>
+                  </button>
+                </template>
+                <div x-show="!summary.warning_count" class="rounded-xl border border-emerald-400/10 bg-emerald-400/5 p-5 text-center text-sm text-emerald-300">
+                  All systems look clear.
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-md">
+              <h3 class="font-semibold text-white">Recent Activity</h3>
+              <p class="mt-1 text-xs text-slate-500">Latest assignments and imports</p>
+              <div class="mt-5 space-y-1">
+                <template x-for="(activity, index) in summary.recent_activity" :key="activity.kind + activity.timestamp + index">
+                  <div class="flex gap-3 rounded-xl px-2 py-3 transition hover:bg-slate-800/40">
+                    <div class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                         :class="activity.kind === 'snapshot' ? 'bg-cyan-400 shadow-[0_0_10px_#06b6d4]' : 'bg-emerald-400 shadow-[0_0_10px_#10b981]'"></div>
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-sm font-medium text-slate-200" x-text="activity.title"></p>
+                      <p class="mt-0.5 truncate text-xs text-slate-500" x-text="activity.detail"></p>
+                    </div>
+                    <span class="shrink-0 text-[11px] text-slate-600" x-text="relativeTime(activity.timestamp)"></span>
+                  </div>
+                </template>
+                <div x-show="!summary.recent_activity.length" class="py-12 text-center text-sm text-slate-600">Activity appears here as your team works.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section x-show="page === 'assets'" x-cloak x-transition.opacity>
+          <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm font-medium text-cyan-400" data-i18n="assets.overline">ASSET REGISTER</p>
+              <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="assets.title">Managed infrastructure</h2>
+            </div>
+            <div class="flex flex-wrap gap-3">
+              <button @click="assetModal = true" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110">
+                <span data-i18n="assets.new">+ New Asset</span>
+              </button>
+            </div>
+          </div>
+          <div class="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-md">
+            <div class="border-b border-slate-800/80 p-4">
+              <label class="relative block max-w-md">
+                <svg class="absolute left-3 top-3 h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input x-model="assetSearch" type="search" placeholder="Search tag, serial, model, location..."
+                       class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10">
+              </label>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="border-b border-slate-800/80 bg-slate-950/30 text-xs uppercase tracking-wider text-slate-500">
+                  <tr><th class="px-5 py-4">Asset</th><th class="px-5 py-4">Type</th><th class="px-5 py-4">Serial</th><th class="px-5 py-4">Purchase</th><th class="px-5 py-4">Location</th><th class="px-5 py-4">Status</th><th class="px-5 py-4">Invoice</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                  <template x-for="asset in filteredAssets" :key="asset.id">
+                    <tr class="transition hover:bg-cyan-400/[.035]">
+                      <td class="px-5 py-4">
+                        <p class="font-semibold text-white" x-text="asset.asset_tag"></p>
+                        <p class="mt-1 text-xs text-slate-500" x-text="[asset.brand, asset.model].filter(Boolean).join(' ') || 'Unspecified model'"></p>
+                      </td>
+                      <td class="px-5 py-4 text-slate-300" x-text="asset.type"></td>
+                      <td class="px-5 py-4 font-mono text-xs" :class="asset.serial_number ? 'text-slate-400' : 'text-amber-300'" x-text="asset.serial_number || 'Missing'"></td>
+                      <td class="px-5 py-4">
+                        <p class="text-sm text-slate-300" x-text="asset.purchase_price != null ? Number(asset.purchase_price).toLocaleString() : '—'"></p>
+                        <p class="mt-1 text-xs text-slate-600" x-text="asset.purchase_date || 'No date'"></p>
+                      </td>
+                      <td class="px-5 py-4 text-slate-400" x-text="asset.location || '—'"></td>
+                      <td class="px-5 py-4"><span class="rounded-full px-2.5 py-1 text-xs font-medium capitalize" :class="statusClass(asset.status)" x-text="asset.status"></span></td>
+                      <td class="px-5 py-4">
+                        <a x-show="asset.invoice_path" :href="`/api/assets/${asset.id}/invoice`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-2.5 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20">
+                          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z"/><path d="M14 3v6h6"/></svg>
+                          View
+                        </a>
+                        <span x-show="!asset.invoice_path" class="text-xs text-slate-600">—</span>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+              <div x-show="!filteredAssets.length && !loading" class="px-6 py-20 text-center">
+                <div class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-800 text-slate-500">
+                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/></svg>
+                </div>
+                <p class="mt-4 font-medium text-slate-300" data-i18n="assets.no_assets">No assets found</p>
+                <p class="mt-1 text-sm text-slate-600" data-i18n="assets.no_assets_help">Try another search or add your first asset.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section x-show="page === 'people'" x-cloak x-transition.opacity>
+          <div class="mb-6">
+            <p class="text-sm font-medium text-emerald-400">PEOPLE DIRECTORY</p>
+            <h2 class="mt-1 text-2xl font-semibold text-white">Asset custodians</h2>
+          </div>
+          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <template x-for="person in people" :key="person.id">
+              <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-md transition hover:border-emerald-400/20">
+                <div class="flex items-center gap-4">
+                  <div class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 text-sm font-bold text-emerald-300" x-text="initials(person.full_name)"></div>
+                  <div class="min-w-0">
+                    <p class="truncate font-semibold text-white" x-text="person.full_name"></p>
+                    <p class="mt-1 text-xs text-slate-500" x-text="person.org_unit || 'No org unit'"></p>
+                  </div>
+                </div>
+                <div class="mt-5 space-y-2 border-t border-slate-800/70 pt-4 text-sm text-slate-400">
+                  <p class="truncate" x-text="person.email || 'No email'"></p>
+                  <p x-text="person.phone || 'No phone'"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <section x-show="page === 'import'" x-cloak x-transition.opacity>
+          <div class="mb-6">
+            <p class="text-sm font-medium text-cyan-400">SYSTEM INGESTION</p>
+            <h2 class="mt-1 text-2xl font-semibold text-white">Import a Windows report</h2>
+            <p class="mt-2 max-w-2xl text-sm text-slate-500">Drop a DxDiag.txt or systeminfo.txt report. Parsing runs locally and deterministically.</p>
+          </div>
+          <div class="grid gap-6 xl:grid-cols-[.9fr_1.1fr]">
+            <div>
+              <div @dragover.prevent="dragging = true" @dragleave.prevent="dragging = false" @drop.prevent="handleDrop($event)"
+                   class="relative flex min-h-80 flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-slate-900/55 p-8 text-center backdrop-blur-md transition"
+                   :class="dragging ? 'border-cyan-400 bg-cyan-400/5 shadow-cyan' : 'border-slate-700 hover:border-slate-600'">
+                <input x-ref="fileInput" @change="selectFile($event.target.files[0])" type="file" accept=".txt,text/plain" class="hidden">
+                <div class="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-cyan-400/15 to-emerald-400/15 text-cyan-300">
+                  <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+                </div>
+                <p class="mt-5 font-semibold text-white" x-text="selectedFile ? selectedFile.name : 'Drop your report here'"></p>
+                <p class="mt-2 text-sm text-slate-500">TXT only · up to 5 MB</p>
+                <button @click="$refs.fileInput.click()" class="mt-6 rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-2.5 text-sm font-medium text-cyan-300 transition hover:bg-cyan-400/15">Choose File</button>
+              </div>
+              <div x-show="uploading" class="mt-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+                <div class="flex justify-between text-xs"><span class="text-slate-400">Parsing and storing report</span><span class="text-cyan-300" x-text="uploadProgress + '%'"></span></div>
+                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-300" :style="`width: ${uploadProgress}%`"></div></div>
+              </div>
+              <button @click="uploadReport()" :disabled="!selectedFile || uploading"
+                      class="mt-4 w-full rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
+                <span x-text="uploading ? 'Importing…' : 'Import & Analyze'"></span>
+              </button>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-md">
+              <div x-show="!importResult" class="flex min-h-96 flex-col items-center justify-center text-center">
+                <div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-800/70 text-slate-500">
+                  <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z"/><path d="M14 3v6h6M8 14h8M8 17h5"/></svg>
+                </div>
+                <p class="mt-4 font-medium text-slate-300">Analysis results</p>
+                <p class="mt-2 max-w-xs text-sm leading-6 text-slate-600">Parsed hardware fields and the recommended ForgeOS profile appear here.</p>
+              </div>
+              <div x-show="importResult" x-cloak>
+                <div class="flex flex-col gap-4 border-b border-slate-800/70 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Recommended Profile</p>
+                    <div class="mt-2 inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-lg font-semibold text-emerald-300 shadow-emerald">
+                      <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981]"></span>
+                      <span x-text="profileLabel(importResult?.suggested_profile)"></span>
+                    </div>
+                  </div>
+                  <div class="text-left sm:text-right"><p class="text-xs text-slate-500">Source</p><p class="mt-1 font-mono text-sm text-cyan-300" x-text="importResult?.source"></p></div>
+                </div>
+                <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                  <template x-for="field in parsedFields" :key="field.key">
+                    <div class="rounded-xl border border-slate-800/70 bg-slate-950/35 p-4">
+                      <p class="text-xs uppercase tracking-wider text-slate-600" x-text="field.label"></p>
+                      <p class="mt-2 break-words text-sm font-medium text-slate-200" x-text="displayParsed(field.key)"></p>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div x-show="assetModal" x-cloak @keydown.escape.window="assetModal = false" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4 backdrop-blur-sm">
+    <div @click.outside="assetModal = false" x-transition class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+      <div class="flex items-start justify-between">
+        <div><h3 class="text-lg font-semibold text-white" data-i18n="modal.new_asset">Register New Asset</h3><p class="mt-1 text-sm text-slate-500" data-i18n="modal.new_asset_help">Add a device to the operational inventory.</p></div>
+        <button @click="assetModal = false" class="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-white">✕</button>
+      </div>
+      <form @submit.prevent="createAsset()" class="mt-6 grid gap-4 sm:grid-cols-2">
+        <template x-for="field in assetFields" :key="field.key">
+          <label :class="field.wide ? 'sm:col-span-2' : ''">
+            <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500" x-text="field.label"></span>
+            <textarea x-show="field.textarea" x-model="newAsset[field.key]" rows="3" :required="field.required"
+                      class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50"></textarea>
+            <input x-show="!field.textarea" x-model="newAsset[field.key]" :type="field.type || 'text'" :required="field.required" :placeholder="field.placeholder || ''"
+                   class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
+          </label>
+        </template>
+        <label class="sm:col-span-2">
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Invoice File</span>
+          <input @change="invoiceFile = $event.target.files[0] || null" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                 class="block w-full cursor-pointer rounded-xl border border-slate-800 bg-slate-950/70 text-sm text-slate-400 file:mr-4 file:border-0 file:bg-emerald-400/10 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-emerald-300">
+          <p x-show="invoiceFile" class="mt-2 text-xs text-cyan-300" x-text="invoiceFile?.name"></p>
+        </label>
+        <div class="mt-2 flex justify-end gap-3 border-t border-slate-800 pt-5 sm:col-span-2">
+          <button type="button" @click="assetModal = false" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800" data-i18n="modal.cancel">Cancel</button>
+          <button type="submit" :disabled="saving" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50" x-text="saving ? translated('modal.saving', 'Saving…') : translated('modal.create', 'Create Asset')"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="fixed bottom-5 right-5 z-[60] space-y-3">
+    <template x-for="toast in toasts" :key="toast.id">
+      <div x-transition class="flex max-w-sm items-start gap-3 rounded-xl border bg-slate-900/95 px-4 py-3 shadow-2xl backdrop-blur"
+           :class="toast.type === 'error' ? 'border-rose-400/25' : 'border-emerald-400/25'">
+        <span class="mt-0.5" :class="toast.type === 'error' ? 'text-rose-400' : 'text-emerald-400'" x-text="toast.type === 'error' ? '●' : '✓'"></span>
+        <p class="text-sm text-slate-200" x-text="toast.message"></p>
+      </div>
+    </template>
+  </div>
+
+  <script src="/static/js/i18n.js"></script>
+  <script>
+    function forgeApp() {
+      const icon = (path) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${path}</svg>`;
+      return {
+        page: "dashboard", loading: true, saving: false, assetModal: false,
+        language: localStorage.getItem("forgeos-language") || "en", dictionary: {},
+        dragging: false, selectedFile: null, uploading: false, uploadProgress: 0, importResult: null,
+        assetSearch: "", assets: [], people: [], toasts: [], lastUpdated: "just now",
+        summary: { counts: { assets: 0, people: 0, active_assignments: 0, system_snapshots: 0 }, warnings: { expiring_warranties: [], missing_serial: [], unassigned_assets: [] }, warning_count: 0, recent_activity: [] },
+        invoiceFile: null,
+        newAsset: { asset_tag: "", type: "", brand: "", model: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" },
+        navigation: [
+          { id: "dashboard", label: "Dashboard", labelKey: "nav.dashboard", icon: icon('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>') },
+          { id: "assets", label: "Assets", labelKey: "nav.assets", icon: icon('<path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4"/>') },
+          { id: "people", label: "People", labelKey: "nav.people", icon: icon('<circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M16 4.5a4 4 0 0 1 0 7.5M18 15a6 6 0 0 1 3.5 6"/>') },
+          { id: "import", label: "Import", labelKey: "nav.import", icon: icon('<path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>') }
+        ],
+        parsedFields: [
+          { key: "hostname", label: "Hostname" }, { key: "os_name", label: "Operating System" },
+          { key: "os_version", label: "OS Version" }, { key: "cpu_name", label: "Processor" },
+          { key: "logical_cpu_cores", label: "Logical Cores" }, { key: "ram_mb", label: "Memory" },
+          { key: "gpu_name", label: "Graphics" }, { key: "bios_version", label: "BIOS" }
+        ],
+        assetFields: [
+          { key: "asset_tag", label: "Asset Tag", required: true, placeholder: "FOS-1007" },
+          { key: "type", label: "Type", required: true, placeholder: "Laptop" },
+          { key: "brand", label: "Brand", placeholder: "Dell" }, { key: "model", label: "Model", placeholder: "Latitude 7450" },
+          { key: "serial_number", label: "Serial Number" }, { key: "location", label: "Location" },
+          { key: "purchase_date", label: "Purchase Date", type: "date" },
+          { key: "purchase_price", label: "Purchase Price", type: "number", placeholder: "0.00" },
+          { key: "status", label: "Status", required: true }, { key: "notes", label: "Notes", wide: true, textarea: true }
+        ],
+        async init() {
+          window.addEventListener("forge:language", (event) => {
+            this.language = event.detail.language;
+            this.dictionary = event.detail.dictionary || {};
+          });
+          if (window.forgeI18n) await window.forgeI18n.setLanguage(this.language);
+          await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople()]);
+          this.loading = false;
+        },
+        get pageTitle() {
+          const item = this.navigation.find(entry => entry.id === this.page);
+          return this.translated(item?.labelKey, item?.label || "ForgeOS");
+        },
+        translated(key, fallback) { return this.dictionary[key] || fallback; },
+        async setLanguage(language) {
+          if (window.forgeI18n) await window.forgeI18n.setLanguage(language);
+        },
+        get filteredAssets() {
+          const query = this.assetSearch.trim().toLowerCase();
+          if (!query) return this.assets;
+          return this.assets.filter(asset => [asset.asset_tag, asset.type, asset.brand, asset.model, asset.serial_number, asset.location, asset.status].filter(Boolean).some(value => value.toLowerCase().includes(query)));
+        },
+        get kpiCards() {
+          const c = this.summary.counts;
+          return [
+            { label: this.translated("dashboard.total_assets", "Total Assets"), value: c.assets, caption: this.translated("dashboard.across_locations", "Across all locations"), href: "/assets", glow: "shadow-cyan", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[1].icon },
+            { label: this.translated("dashboard.people", "People"), value: c.people, caption: this.translated("dashboard.registered_custodians", "Registered custodians"), href: "/people", glow: "", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: this.navigation[2].icon },
+            { label: this.translated("dashboard.assigned", "Assigned"), value: c.active_assignments, caption: this.translated("dashboard.active_assignments", "Active assignments"), href: "/assets?status=assigned", glow: "shadow-emerald", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: icon('<path d="m5 12 4 4L19 6"/>') },
+            { label: this.translated("dashboard.snapshots", "Snapshots"), value: c.system_snapshots, caption: this.translated("dashboard.imported_reports", "Imported reports"), href: "/history", glow: "", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[3].icon }
+          ];
+        },
+        get warningGroups() {
+          const w = this.summary.warnings;
+          return [
+            { key: "warranty", title: "Warranties expiring soon", detail: w.expiring_warranties[0]?.asset_tag ? `${w.expiring_warranties[0].asset_tag} expires first` : "No coverage expires in 30 days", count: w.expiring_warranties.length, color: "bg-amber-400/10 text-amber-300", icon: icon('<path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/><path d="M12 8v4m0 4h.01"/>') },
+            { key: "serial", title: "Assets missing serials", detail: w.missing_serial[0]?.asset_tag ? `${w.missing_serial[0].asset_tag} needs identification` : "Asset identity is complete", count: w.missing_serial.length, color: "bg-rose-400/10 text-rose-300", icon: icon('<path d="M5 5h14v14H5zM8 9h8M8 13h5"/>') },
+            { key: "assignment", title: "Unassigned assets", detail: w.unassigned_assets[0]?.asset_tag ? `${w.unassigned_assets[0].asset_tag} is available` : "Every asset has an owner", count: w.unassigned_assets.length, color: "bg-cyan-400/10 text-cyan-300", icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') }
+          ];
+        },
+        navigate(page) { this.page = page; window.scrollTo({ top: 0, behavior: "smooth" }); },
+        async api(url, options = {}) {
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            let detail = "Request failed";
+            try { const body = await response.json(); detail = body.detail || detail; } catch (_) {}
+            throw new Error(Array.isArray(detail) ? detail.map(item => item.msg).join(", ") : detail);
+          }
+          return response.status === 204 ? null : response.json();
+        },
+        async loadSummary() { try { this.summary = await this.api("/api/v1/dashboard/summary"); this.lastUpdated = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch (error) { this.toast(error.message, "error"); } },
+        async loadAssets() { try { this.assets = await this.api("/api/v1/assets"); } catch (error) { this.toast(error.message, "error"); } },
+        async loadPeople() { try { this.people = await this.api("/api/v1/people"); } catch (error) { this.toast(error.message, "error"); } },
+        async refreshCurrent() { this.loading = true; await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople()]); this.loading = false; this.toast("Workspace refreshed"); },
+        async createAsset() {
+          this.saving = true;
+          try {
+            const payload = Object.fromEntries(Object.entries(this.newAsset).map(([key, value]) => [key, value.trim() || null]));
+            payload.status = payload.status || "active";
+            const createdAsset = await this.api("/api/v1/assets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            if (this.invoiceFile) await this.uploadInvoice(createdAsset.id, this.invoiceFile);
+            this.assetModal = false; this.invoiceFile = null; this.newAsset = { asset_tag: "", type: "", brand: "", model: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" };
+            await Promise.all([this.loadAssets(), this.loadSummary()]); this.toast("Asset registered successfully");
+          } catch (error) { this.toast(error.message, "error"); } finally { this.saving = false; }
+        },
+        async uploadInvoice(assetId, file) {
+          const body = new FormData(); body.append("file", file);
+          await this.api(`/api/assets/${assetId}/invoice`, { method: "POST", body });
+        },
+        exportExcel() {
+          window.location.assign(`/api/export/excel?lang=${this.language}`);
+        },
+        exportPdf() {
+          window.location.assign(`/api/export/pdf?lang=${this.language}`);
+        },
+        selectFile(file) {
+          if (!file) return;
+          if (!file.name.toLowerCase().endsWith(".txt")) { this.toast("Choose a .txt report", "error"); return; }
+          this.selectedFile = file; this.importResult = null;
+        },
+        handleDrop(event) { this.dragging = false; this.selectFile(event.dataTransfer.files[0]); },
+        async uploadReport() {
+          if (!this.selectedFile) return;
+          this.uploading = true; this.uploadProgress = 12;
+          const timer = setInterval(() => { if (this.uploadProgress < 88) this.uploadProgress += Math.ceil((90 - this.uploadProgress) / 5); }, 250);
+          try {
+            const body = new FormData(); body.append("file", this.selectedFile);
+            this.importResult = await this.api("/api/v1/ingest", { method: "POST", body });
+            this.uploadProgress = 100; await this.loadSummary(); this.toast("Report imported and analyzed");
+          } catch (error) { this.toast(error.message, "error"); } finally { clearInterval(timer); setTimeout(() => { this.uploading = false; this.uploadProgress = 0; }, 500); }
+        },
+        displayParsed(key) { const value = this.importResult?.parsed?.[key]; if (value === null || value === undefined || value === "") return "Not detected"; return key === "ram_mb" ? `${value.toLocaleString()} MB` : value; },
+        profileLabel(profile) { return ({ office_desktop: "Office Desktop", laptop: "Laptop", minimal: "Minimal" })[profile] || profile || "Unknown"; },
+        statusClass(status) { return ({ active: "bg-emerald-400/10 text-emerald-300", maintenance: "bg-amber-400/10 text-amber-300", stock: "bg-cyan-400/10 text-cyan-300", retired: "bg-slate-700 text-slate-400" })[status?.toLowerCase()] || "bg-slate-700 text-slate-300"; },
+        initials(name) { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(); },
+        relativeTime(value) { const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000); return days <= 0 ? "Today" : days === 1 ? "1d ago" : `${days}d ago`; },
+        toast(message, type = "success") { const id = Date.now() + Math.random(); this.toasts.push({ id, message, type }); setTimeout(() => { this.toasts = this.toasts.filter(item => item.id !== id); }, 3500); }
+      };
+    }
+  </script>
+</body>
+</html>

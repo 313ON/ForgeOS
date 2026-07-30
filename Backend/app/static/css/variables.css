@@ -1,0 +1,8 @@
+:root {
+  --bg-primary: #0b0f19;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-blur: 15px;
+  --sidebar-width: 260px;
+  --accent-emerald: #10b981;
+  --accent-cyan: #06b6d4;
+}

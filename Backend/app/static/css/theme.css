@@ -1,0 +1,64 @@
+:root {
+  --bg-primary: #0b0f19;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-blur: 15px;
+  --sidebar-width: 260px;
+  --bg-panel: rgba(15, 23, 42, 0.66);
+  --border-glass: rgba(71, 85, 105, 0.45);
+  --accent-emerald: #10b981;
+  --accent-cyan: #06b6d4;
+  --text-primary: #e2e8f0;
+  --font-ui: "Vazirmatn", "Segoe UI", sans-serif;
+  font-feature-settings: "ss01", "cv01", "cv02";
+}
+
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap");
+
+html,
+body {
+  font-family: var(--font-ui);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "ss01", "cv01", "cv02", "tnum";
+}
+
+html[dir="rtl"] {
+  text-align: right;
+}
+
+html[dir="rtl"] .app-sidebar {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  left: auto !important;
+  right: 0 !important;
+  border-inline-start: 1px solid rgba(30, 41, 59, 0.8);
+  border-inline-end: 0;
+}
+
+html[dir="rtl"] .app-content {
+  direction: rtl;
+}
+
+html[dir="ltr"] .app-content {
+  direction: ltr;
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+.neural-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.055;
+}
+
+[dir="rtl"] .rtl-mirror {
+  transform: scaleX(-1);
+}

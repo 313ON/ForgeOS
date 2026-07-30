@@ -1,5 +1,6 @@
 # Core Framework
 fastapi
+python-multipart
 
 # ASGI Server
 uvicorn[standard]
@@ -10,6 +11,9 @@ pydantic-settings
 
 # Database
 sqlalchemy
+xlsxwriter
+fpdf2
+uharfbuzz
 
 # Environment
 python-dotenv
