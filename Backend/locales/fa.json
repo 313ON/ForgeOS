@@ -2,4 +2,20 @@
   "tagline": "سیستم‌عامل زنده و پویا برای عملیات",
   "export_pdf": "خروجی PDF",
   "export_excel": "خروجی Excel"
+  ,"targets": {
+    "title": "اهداف تحت پایش",
+    "name": "نام",
+    "ip_or_host": "IP یا میزبان",
+    "target_type": "نوع هدف",
+    "ping_interval_sec": "فاصله پینگ (ثانیه)",
+    "ssh_port": "درگاه SSH",
+    "web_port": "درگاه وب",
+    "credentials_info": "اطلاعات دسترسی",
+    "camera_stream_url": "نشانی جریان دوربین",
+    "status": "وضعیت",
+    "create": "افزودن هدف",
+    "update": "به‌روزرسانی هدف",
+    "delete": "حذف هدف",
+    "logs": "گزارش‌های شبکه"
+  }
 }

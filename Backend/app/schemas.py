@@ -7,6 +7,11 @@ from .domain.schemas import (
     AssignmentCreate,
     AssignmentRead,
     IngestResponse,
+    NetworkLogOut,
+    TargetCreate,
+    TargetListItem,
+    TargetOut,
+    TargetUpdate,
     PersonCreate,
     PersonRead,
 )
@@ -21,6 +26,11 @@ __all__ = [
     "AssignmentCreate",
     "AssignmentRead",
     "IngestResponse",
+    "NetworkLogOut",
     "PersonCreate",
     "PersonRead",
+    "TargetCreate",
+    "TargetListItem",
+    "TargetOut",
+    "TargetUpdate",
 ]

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -79,3 +81,60 @@ class IngestResponse(BaseModel):
     filename: str
     parsed: dict[str, str | int | None]
     suggested_profile: str
+
+
+class TargetCreate(BaseModel):
+    """Public fields accepted when registering a monitored target."""
+
+    name: str = Field(min_length=1, max_length=150)
+    ip_or_host: str = Field(min_length=1, max_length=255)
+    target_type: str = Field(min_length=1, max_length=50)
+    ping_interval_sec: int = Field(default=60, ge=5)
+    ssh_port: int | None = Field(default=None, ge=1, le=65535)
+    web_port: int | None = Field(default=None, ge=1, le=65535)
+    camera_stream_url: str | None = Field(default=None, max_length=500)
+
+
+class TargetUpdate(BaseModel):
+    """Mutable target fields; credentials can only be supplied through PUT."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=150)
+    ip_or_host: str | None = Field(default=None, min_length=1, max_length=255)
+    target_type: str | None = Field(default=None, min_length=1, max_length=50)
+    ping_interval_sec: int | None = Field(default=None, ge=5)
+    ssh_port: int | None = Field(default=None, ge=1, le=65535)
+    web_port: int | None = Field(default=None, ge=1, le=65535)
+    credentials_info: str | None = None
+    camera_stream_url: str | None = Field(default=None, max_length=500)
+    status: Literal["online", "offline", "unknown"] | None = None
+
+
+class TargetOut(ORMModel):
+    """Safe target response that never exposes credential contents."""
+
+    id: int
+    name: str
+    ip_or_host: str
+    target_type: str
+    ping_interval_sec: int
+    ssh_port: int | None
+    web_port: int | None
+    camera_stream_url: str | None
+    status: Literal["online", "offline", "unknown"]
+    last_latency_ms: float | None
+    last_checked_at: datetime | None
+    created_at: datetime
+    credentials_configured: bool = False
+
+
+TargetListItem = TargetOut
+
+
+class NetworkLogOut(ORMModel):
+    """A safe network check result for charting."""
+
+    id: int
+    target_id: int
+    latency_ms: float | None
+    status_code: Literal[-1, 0, 1]
+    timestamp: datetime

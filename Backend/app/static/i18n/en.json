@@ -81,5 +81,22 @@
   "common.not_detected": "Not detected",
   "common.workspace_refreshed": "Workspace refreshed",
   "common.asset_registered": "Asset registered successfully",
-  "common.choose_txt": "Choose a .txt report"
+  "common.choose_txt": "Choose a .txt report",
+  "tagline": "Live & Living Operations OS",
+  "export_pdf": "Export PDF",
+  "export_excel": "Export Excel",
+  "targets.title": "Monitored Targets",
+  "targets.name": "Name",
+  "targets.ip_or_host": "IP or Host",
+  "targets.target_type": "Target Type",
+  "targets.ping_interval_sec": "Ping Interval (seconds)",
+  "targets.ssh_port": "SSH Port",
+  "targets.web_port": "Web Port",
+  "targets.credentials_info": "Credentials",
+  "targets.camera_stream_url": "Camera Stream URL",
+  "targets.status": "Status",
+  "targets.create": "Add Target",
+  "targets.update": "Update Target",
+  "targets.delete": "Delete Target",
+  "targets.logs": "Network Logs"
 }

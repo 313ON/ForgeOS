@@ -2,7 +2,18 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, String, Text, func
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -127,3 +138,73 @@ class SystemSnapshot(Base):
     )
 
     asset: Mapped[Asset | None] = relationship(back_populates="snapshots")
+
+
+class MonitoredTarget(Base):
+    """A network endpoint configured for future health monitoring."""
+
+    __tablename__ = "monitored_targets"
+    __table_args__ = (
+        CheckConstraint(
+            "ping_interval_sec >= 5",
+            name="ck_monitored_targets_ping_interval_min",
+        ),
+        CheckConstraint(
+            "status IN ('online', 'offline', 'unknown')",
+            name="ck_monitored_targets_status",
+        ),
+        Index("ix_monitored_targets_name", "name"),
+        Index("ix_monitored_targets_ip_or_host", "ip_or_host"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    ip_or_host: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    ping_interval_sec: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
+    ssh_port: Mapped[int | None] = mapped_column(Integer)
+    web_port: Mapped[int | None] = mapped_column(Integer)
+    credentials_info: Mapped[str | None] = mapped_column(Text)
+    camera_stream_url: Mapped[str | None] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    last_latency_ms: Mapped[float | None] = mapped_column(Float)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    logs: Mapped[list[NetworkLog]] = relationship(
+        back_populates="target",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class NetworkLog(Base):
+    """A point-in-time network check result for a monitored target."""
+
+    __tablename__ = "network_logs"
+    __table_args__ = (
+        CheckConstraint(
+            "status_code IN (-1, 0, 1)",
+            name="ck_network_logs_status_code",
+        ),
+        Index("ix_network_logs_timestamp", "timestamp"),
+        Index("ix_network_logs_target_timestamp", "target_id", "timestamp"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    target_id: Mapped[int] = mapped_column(
+        ForeignKey("monitored_targets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    latency_ms: Mapped[float | None] = mapped_column(Float)
+    status_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    target: Mapped[MonitoredTarget] = relationship(back_populates="logs")

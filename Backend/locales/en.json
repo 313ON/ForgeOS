@@ -2,4 +2,20 @@
   "tagline": "Live & Living Operations OS",
   "export_pdf": "Export PDF",
   "export_excel": "Export Excel"
+  ,"targets": {
+    "title": "Monitored Targets",
+    "name": "Name",
+    "ip_or_host": "IP or Host",
+    "target_type": "Target Type",
+    "ping_interval_sec": "Ping Interval (seconds)",
+    "ssh_port": "SSH Port",
+    "web_port": "Web Port",
+    "credentials_info": "Credentials",
+    "camera_stream_url": "Camera Stream URL",
+    "status": "Status",
+    "create": "Add Target",
+    "update": "Update Target",
+    "delete": "Delete Target",
+    "logs": "Network Logs"
+  }
 }

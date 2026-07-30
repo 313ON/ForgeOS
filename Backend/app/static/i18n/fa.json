@@ -81,5 +81,22 @@
   "common.not_detected": "شناسایی نشد",
   "common.workspace_refreshed": "فضای کاری بازخوانی شد",
   "common.asset_registered": "دارایی با موفقیت ثبت شد",
-  "common.choose_txt": "یک گزارش .txt انتخاب کنید"
+  "common.choose_txt": "یک گزارش .txt انتخاب کنید",
+  "tagline": "سیستم‌عامل زنده و پویا برای عملیات",
+  "export_pdf": "خروجی PDF",
+  "export_excel": "خروجی Excel",
+  "targets.title": "اهداف تحت پایش",
+  "targets.name": "نام",
+  "targets.ip_or_host": "IP یا میزبان",
+  "targets.target_type": "نوع هدف",
+  "targets.ping_interval_sec": "فاصله پینگ (ثانیه)",
+  "targets.ssh_port": "درگاه SSH",
+  "targets.web_port": "درگاه وب",
+  "targets.credentials_info": "اطلاعات دسترسی",
+  "targets.camera_stream_url": "نشانی جریان دوربین",
+  "targets.status": "وضعیت",
+  "targets.create": "افزودن هدف",
+  "targets.update": "به‌روزرسانی هدف",
+  "targets.delete": "حذف هدف",
+  "targets.logs": "گزارش‌های شبکه"
 }
