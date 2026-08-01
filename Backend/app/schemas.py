@@ -14,6 +14,10 @@ from .domain.schemas import (
     TargetUpdate,
     PersonCreate,
     PersonRead,
+    PersonUpdate,
+    LoginRequest,
+    UserCreate,
+    UserRead,
 )
 
 AssetResponse = AssetRead
@@ -29,6 +33,10 @@ __all__ = [
     "NetworkLogOut",
     "PersonCreate",
     "PersonRead",
+    "PersonUpdate",
+    "LoginRequest",
+    "UserCreate",
+    "UserRead",
     "TargetCreate",
     "TargetListItem",
     "TargetOut",

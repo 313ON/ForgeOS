@@ -32,7 +32,11 @@ def asset_report_rows(db: Session) -> list[dict[str, Any]]:
         {
             "asset_tag": asset.asset_tag,
             "type": asset.type,
+            "manufacturer": asset.manufacturer or asset.brand,
             "model": asset.model,
+            "ram_mb": asset.ram_mb,
+            "cpu_name": asset.cpu_name,
+            "gpu_name": asset.gpu_name,
             "serial_number": asset.serial_number,
             "purchase_date": asset.purchase_date,
             "purchase_price": asset.purchase_price,

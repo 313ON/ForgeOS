@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import asyncio
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -11,6 +12,7 @@ from .api.router import compat_router, router
 from .api.targets import router as targets_router
 from .database import initialize_database
 from .seed import seed_database
+from .services.scheduler import monitoring_loop
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -20,7 +22,13 @@ async def lifespan(_: FastAPI):
     """Initialize persistent storage and first-run sample data."""
     initialize_database()
     seed_database()
-    yield
+    stop_event = asyncio.Event()
+    task = asyncio.create_task(monitoring_loop(stop_event))
+    try:
+        yield
+    finally:
+        stop_event.set()
+        await task
 
 
 app = FastAPI(
@@ -44,6 +52,7 @@ def dashboard() -> FileResponse:
 @app.get("/people", include_in_schema=False)
 @app.get("/assets", include_in_schema=False)
 @app.get("/history", include_in_schema=False)
+@app.get("/monitoring", include_in_schema=False)
 def dashboard_section() -> FileResponse:
     """Serve the SPA shell for dashboard deep links."""
     return FileResponse(STATIC_DIR / "index.html")

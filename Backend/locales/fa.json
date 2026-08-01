@@ -1,7 +1,27 @@
 {
   "tagline": "سیستم‌عامل زنده و پویا برای عملیات",
   "export_pdf": "خروجی PDF",
-  "export_excel": "خروجی Excel"
+  "export_excel": "خروجی Excel",
+  "auth": {
+    "login_title": "ورود به ForgeOS",
+    "login_help": "برای دسترسی به فضای کاری از حساب کاربری استفاده کنید.",
+    "username": "نام کاربری",
+    "password": "گذرواژه",
+    "login": "ورود",
+    "logout": "خروج"
+  },
+  "users": {
+    "overline": "مدیریت دسترسی",
+    "title": "کاربران ForgeOS",
+    "new": "کاربر جدید"
+  }
+  ,"monitoring": {
+    "overline": "پایش عملیات",
+    "title": "سلامت وب‌سایت و شبکه",
+    "add": "افزودن هدف",
+    "check": "بررسی فوری",
+    "history": "تاریخچه"
+  }
   ,"targets": {
     "title": "اهداف تحت پایش",
     "name": "نام",

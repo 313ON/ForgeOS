@@ -1,22 +1,35 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+import os
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal
-from .domain.models import Asset, Assignment, Person, Warranty
+from .domain.models import Asset, Assignment, Person, User, Warranty
+from .services.auth import hash_password
 
 
 def seed_database() -> bool:
     """Insert useful first-run sample data when the asset table is empty."""
     with SessionLocal() as session:
         if session.scalar(select(Asset.id).limit(1)) is not None:
+            _ensure_admin(session)
+            session.commit()
             return False
         _insert_seed_data(session)
+        _ensure_admin(session)
         session.commit()
         return True
+
+
+def _ensure_admin(session: Session) -> None:
+    if session.scalar(select(User.id).limit(1)) is not None:
+        return
+    username = os.getenv("FORGEOS_ADMIN_USERNAME", "admin")
+    password = os.getenv("FORGEOS_ADMIN_PASSWORD", "ForgeOS-ChangeMe-2026!")
+    session.add(User(username=username, password_hash=hash_password(password), role="ADMIN"))
 
 
 def _insert_seed_data(session: Session) -> None:

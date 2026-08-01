@@ -1,7 +1,27 @@
 {
   "tagline": "Live & Living Operations OS",
   "export_pdf": "Export PDF",
-  "export_excel": "Export Excel"
+  "export_excel": "Export Excel",
+  "auth": {
+    "login_title": "Sign in to ForgeOS",
+    "login_help": "Use an operator account to access the workspace.",
+    "username": "Username",
+    "password": "Password",
+    "login": "Login",
+    "logout": "Logout"
+  },
+  "users": {
+    "overline": "ACCESS MANAGEMENT",
+    "title": "ForgeOS users",
+    "new": "New User"
+  }
+  ,"monitoring": {
+    "overline": "OPERATIONS MONITORING",
+    "title": "Website and network health",
+    "add": "Add Target",
+    "check": "Check now",
+    "history": "History"
+  }
   ,"targets": {
     "title": "Monitored Targets",
     "name": "Name",

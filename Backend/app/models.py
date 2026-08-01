@@ -8,6 +8,7 @@ from .domain.models import (
     Person,
     SystemSnapshot,
     Warranty,
+    User,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "Person",
     "SystemSnapshot",
     "Warranty",
+    "User",
 ]

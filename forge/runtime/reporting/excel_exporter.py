@@ -94,7 +94,11 @@ def build_assets_workbook(rows: Sequence[dict[str, Any]], lang: str = "en") -> B
     columns = [
         (labels["asset_tag"], "asset_tag"),
         (labels["type"], "type"),
+        (labels.get("manufacturer", "Manufacturer"), "manufacturer"),
         (labels["model"], "model"),
+        (labels.get("cpu", "CPU"), "cpu_name"),
+        (labels.get("ram", "RAM (MB)"), "ram_mb"),
+        (labels.get("gpu", "GPU"), "gpu_name"),
         (labels["serial"], "serial_number"),
         (labels["purchase_date"], "purchase_date"),
         (labels["purchase_price"], "purchase_price"),
@@ -107,7 +111,7 @@ def build_assets_workbook(rows: Sequence[dict[str, Any]], lang: str = "en") -> B
     assets_sheet.freeze_panes(1, 0)
     assets_sheet.autofilter(0, 0, len(rows), len(columns) - 1)
     assets_sheet.set_row(0, 24)
-    widths = [14, 14, 24, 20, 15, 23, 18, 14, 18]
+    widths = [14, 14, 18, 24, 24, 14, 24, 20, 15, 23, 18, 14, 18]
     for column_number, width in enumerate(widths):
         assets_sheet.set_column(column_number, column_number, width)
     for row_number, row in enumerate(rows, start=1):

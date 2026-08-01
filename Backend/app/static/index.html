@@ -39,7 +39,7 @@
     </g>
     <defs><linearGradient id="mesh-gradient" x1="0" x2="1"><stop stop-color="#06b6d4"/><stop offset="1" stop-color="#10b981"/></linearGradient></defs>
   </svg>
-  <div class="min-h-full lg:flex">
+  <div x-show="authenticated" x-cloak class="min-h-full lg:flex">
     <aside class="app-sidebar fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-800/80 bg-slate-950/80 backdrop-blur-xl lg:flex lg:flex-col">
       <div class="flex h-20 items-center gap-3 border-b border-slate-800/70 px-6">
         <div class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-slate-950 shadow-cyan">
@@ -56,7 +56,7 @@
 
       <nav class="flex-1 space-y-2 px-4 py-6">
         <template x-for="item in navigation" :key="item.id">
-          <button @click="navigate(item.id)" class="group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition"
+          <button x-show="!item.adminOnly || isAdmin" @click="navigate(item.id)" class="group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition"
                   :class="page === item.id ? 'bg-cyan-400/10 text-cyan-300 ring-1 ring-cyan-400/20' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'">
             <span x-html="item.icon" class="h-5 w-5"></span>
             <span x-text="translated(item.labelKey, item.label)"></span>
@@ -107,6 +107,11 @@
                 <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/>
               </svg>
             </button>
+            <div x-show="currentUser" class="hidden text-right sm:block">
+              <p class="text-xs font-semibold text-white" x-text="currentUser?.username"></p>
+              <p class="text-[10px] text-cyan-300" x-text="currentUser?.role"></p>
+            </div>
+            <button @click="logout()" class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2.5 text-xs font-semibold text-slate-400 hover:text-rose-300" data-i18n="auth.logout">Logout</button>
             <a href="/docs" target="_blank" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110">
               <span data-i18n="header.api_docs">API Docs</span>
             </a>
@@ -114,7 +119,7 @@
         </div>
         <div class="flex gap-1 overflow-x-auto border-t border-slate-800/50 px-3 py-2 lg:hidden">
           <template x-for="item in navigation" :key="item.id">
-            <button @click="navigate(item.id)" x-text="translated(item.labelKey, item.label)"
+            <button x-show="!item.adminOnly || isAdmin" @click="navigate(item.id)" x-text="translated(item.labelKey, item.label)"
                     class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium"
                     :class="page === item.id ? 'bg-cyan-400/10 text-cyan-300' : 'text-slate-500'"></button>
           </template>
@@ -216,7 +221,7 @@
               <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="assets.title">Managed infrastructure</h2>
             </div>
             <div class="flex flex-wrap gap-3">
-              <button @click="assetModal = true" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110">
+              <button x-show="isAdmin" @click="assetModal = true" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110">
                 <span data-i18n="assets.new">+ New Asset</span>
               </button>
             </div>
@@ -239,7 +244,8 @@
                     <tr class="transition hover:bg-cyan-400/[.035]">
                       <td class="px-5 py-4">
                         <p class="font-semibold text-white" x-text="asset.asset_tag"></p>
-                        <p class="mt-1 text-xs text-slate-500" x-text="[asset.brand, asset.model].filter(Boolean).join(' ') || 'Unspecified model'"></p>
+                        <p class="mt-1 text-xs text-slate-500" x-text="[asset.manufacturer || asset.brand, asset.model].filter(Boolean).join(' ') || 'Unspecified model'"></p>
+                        <p class="mt-1 text-[11px] text-slate-600" x-text="[asset.cpu_name, asset.ram_mb ? `${Math.round(asset.ram_mb / 1024)} GB RAM` : null].filter(Boolean).join(' · ')"></p>
                       </td>
                       <td class="px-5 py-4 text-slate-300" x-text="asset.type"></td>
                       <td class="px-5 py-4 font-mono text-xs" :class="asset.serial_number ? 'text-slate-400' : 'text-amber-300'" x-text="asset.serial_number || 'Missing'"></td>
@@ -295,6 +301,50 @@
           </div>
         </section>
 
+        <section x-show="page === 'monitoring'" x-cloak x-transition.opacity>
+          <div class="mb-6">
+            <p class="text-sm font-medium text-cyan-400" data-i18n="monitoring.overline">OPERATIONS MONITORING</p>
+            <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="monitoring.title">Website and network health</h2>
+            <button @click="addTarget()" class="mt-4 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="monitoring.add">Add Target</button>
+          </div>
+          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <template x-for="target in targets" :key="target.id">
+              <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
+                <div class="flex items-start justify-between gap-3">
+                  <div><p class="font-semibold text-white" x-text="target.name"></p><p class="mt-1 text-xs text-slate-500" x-text="target.ip_or_host"></p></div>
+                  <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="monitoringStatusClass(target.status)" x-text="target.status"></span>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-400">
+                  <span x-text="target.target_type"></span><span x-text="target.last_latency_ms ? `${target.last_latency_ms.toFixed(1)} ms` : '—'"></span>
+                </div>
+                <p x-show="target.last_error" class="mt-3 text-xs text-rose-300" x-text="target.last_error"></p>
+                <div class="mt-4 flex gap-2">
+                  <button @click="checkTarget(target.id)" class="rounded-lg bg-cyan-400/10 px-3 py-2 text-xs font-medium text-cyan-300" data-i18n="monitoring.check">Check now</button>
+                  <button @click="loadTargetLogs(target)" class="rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-slate-300" data-i18n="monitoring.history">History</button>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div x-show="selectedTargetLogs.length" class="mt-6 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
+            <h3 class="font-semibold text-white" x-text="selectedTarget?.name"></h3>
+            <div class="mt-4 space-y-2 text-xs">
+              <template x-for="event in selectedTargetLogs" :key="event.id">
+                <div class="flex justify-between border-b border-slate-800/60 py-2"><span x-text="event.status"></span><span class="text-slate-500" x-text="event.message || event.timestamp"></span></div>
+              </template>
+            </div>
+          </div>
+        </section>
+
+        <section x-show="page === 'users'" x-cloak x-transition.opacity>
+          <div class="mb-6 flex items-center justify-between">
+            <div><p class="text-sm font-medium text-cyan-400" data-i18n="users.overline">ACCESS MANAGEMENT</p><h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="users.title">ForgeOS users</h2></div>
+            <button @click="createUser()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="users.new">New User</button>
+          </div>
+          <div class="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60">
+            <template x-for="user in users" :key="user.id"><div class="flex items-center justify-between border-b border-slate-800/60 px-5 py-4"><span class="font-medium text-white" x-text="user.username"></span><span class="rounded-full bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-300" x-text="user.role"></span></div></template>
+          </div>
+        </section>
+
         <section x-show="page === 'import'" x-cloak x-transition.opacity>
           <div class="mb-6">
             <p class="text-sm font-medium text-cyan-400">SYSTEM INGESTION</p>
@@ -318,7 +368,7 @@
                 <div class="flex justify-between text-xs"><span class="text-slate-400">Parsing and storing report</span><span class="text-cyan-300" x-text="uploadProgress + '%'"></span></div>
                 <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-300" :style="`width: ${uploadProgress}%`"></div></div>
               </div>
-              <button @click="uploadReport()" :disabled="!selectedFile || uploading"
+              <button x-show="isAdmin" @click="uploadReport()" :disabled="!selectedFile || uploading"
                       class="mt-4 w-full rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
                 <span x-text="uploading ? 'Importing…' : 'Import & Analyze'"></span>
               </button>
@@ -399,23 +449,39 @@
     </template>
   </div>
 
+  <div x-show="!authenticated" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-slate-950 p-4">
+    <form @submit.prevent="login()" class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/90 p-7 shadow-2xl">
+      <p class="text-sm font-medium text-cyan-400">FORGEOS ACCESS</p>
+      <h1 class="mt-2 text-2xl font-semibold text-white" data-i18n="auth.login_title">Sign in to ForgeOS</h1>
+      <p class="mt-2 text-sm text-slate-500" data-i18n="auth.login_help">Use an operator account to access the workspace.</p>
+      <label class="mt-6 block text-xs uppercase tracking-wider text-slate-500" data-i18n="auth.username">Username</label>
+      <input x-model="loginForm.username" autocomplete="username" class="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-white outline-none focus:border-cyan-500/50">
+      <label class="mt-4 block text-xs uppercase tracking-wider text-slate-500" data-i18n="auth.password">Password</label>
+      <input x-model="loginForm.password" type="password" autocomplete="current-password" class="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-white outline-none focus:border-cyan-500/50">
+      <button class="mt-6 w-full rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-3 font-semibold text-slate-950" data-i18n="auth.login">Login</button>
+    </form>
+  </div>
+
   <script src="/static/js/i18n.js"></script>
   <script>
     function forgeApp() {
       const icon = (path) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${path}</svg>`;
       return {
-        page: "dashboard", loading: true, saving: false, assetModal: false,
+        page: "dashboard", loading: true, saving: false, assetModal: false, authenticated: Boolean(localStorage.getItem("forgeos-token")),
+        currentUser: null, loginForm: { username: "", password: "" },
         language: localStorage.getItem("forgeos-language") || "en", dictionary: {},
         dragging: false, selectedFile: null, uploading: false, uploadProgress: 0, importResult: null,
-        assetSearch: "", assets: [], people: [], toasts: [], lastUpdated: "just now",
+        assetSearch: "", assets: [], people: [], users: [], targets: [], selectedTarget: null, selectedTargetLogs: [], toasts: [], lastUpdated: "just now",
         summary: { counts: { assets: 0, people: 0, active_assignments: 0, system_snapshots: 0 }, warnings: { expiring_warranties: [], missing_serial: [], unassigned_assets: [] }, warning_count: 0, recent_activity: [] },
         invoiceFile: null,
-        newAsset: { asset_tag: "", type: "", brand: "", model: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" },
+        newAsset: { asset_tag: "", type: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" },
         navigation: [
           { id: "dashboard", label: "Dashboard", labelKey: "nav.dashboard", icon: icon('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>') },
           { id: "assets", label: "Assets", labelKey: "nav.assets", icon: icon('<path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4"/>') },
           { id: "people", label: "People", labelKey: "nav.people", icon: icon('<circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M16 4.5a4 4 0 0 1 0 7.5M18 15a6 6 0 0 1 3.5 6"/>') },
-          { id: "import", label: "Import", labelKey: "nav.import", icon: icon('<path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>') }
+          { id: "users", label: "Users", labelKey: "nav.users", adminOnly: true, icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') },
+          { id: "import", label: "Import", labelKey: "nav.import", icon: icon('<path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>') },
+          { id: "monitoring", label: "Monitoring", labelKey: "nav.monitoring", icon: icon('<path d="M4 18V6m5 12V9m5 9V4m5 14v-7"/>') }
         ],
         parsedFields: [
           { key: "hostname", label: "Hostname" }, { key: "os_name", label: "Operating System" },
@@ -424,9 +490,10 @@
           { key: "gpu_name", label: "Graphics" }, { key: "bios_version", label: "BIOS" }
         ],
         assetFields: [
-          { key: "asset_tag", label: "Asset Tag", required: true, placeholder: "FOS-1007" },
+          { key: "asset_tag", label: "Asset Tag (optional)", placeholder: "Auto-generated" },
           { key: "type", label: "Type", required: true, placeholder: "Laptop" },
-          { key: "brand", label: "Brand", placeholder: "Dell" }, { key: "model", label: "Model", placeholder: "Latitude 7450" },
+          { key: "manufacturer", label: "Manufacturer", placeholder: "HP" }, { key: "brand", label: "Brand", placeholder: "Dell" }, { key: "model", label: "Model", placeholder: "Latitude 7450" },
+          { key: "ram_mb", label: "RAM (MB)", type: "number" }, { key: "cpu_name", label: "CPU" },
           { key: "serial_number", label: "Serial Number" }, { key: "location", label: "Location" },
           { key: "purchase_date", label: "Purchase Date", type: "date" },
           { key: "purchase_price", label: "Purchase Price", type: "number", placeholder: "0.00" },
@@ -438,9 +505,13 @@
             this.dictionary = event.detail.dictionary || {};
           });
           if (window.forgeI18n) await window.forgeI18n.setLanguage(this.language);
-          await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople()]);
+          if (this.authenticated) {
+            try { this.currentUser = await this.api("/api/v1/auth/me"); } catch (_) { this.logout(); }
+            if (this.authenticated) await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets(), this.loadUsers()]);
+          }
           this.loading = false;
         },
+        get isAdmin() { return this.currentUser?.role === "ADMIN"; },
         get pageTitle() {
           const item = this.navigation.find(entry => entry.id === this.page);
           return this.translated(item?.labelKey, item?.label || "ForgeOS");
@@ -473,7 +544,11 @@
         },
         navigate(page) { this.page = page; window.scrollTo({ top: 0, behavior: "smooth" }); },
         async api(url, options = {}) {
-          const response = await fetch(url, options);
+          const headers = new Headers(options.headers || {});
+          const token = localStorage.getItem("forgeos-token");
+          if (token) headers.set("Authorization", `Bearer ${token}`);
+          const response = await fetch(url, { ...options, headers });
+          if (response.status === 401 && !url.includes("/auth/login")) { this.logout(); throw new Error("Authentication required"); }
           if (!response.ok) {
             let detail = "Request failed";
             try { const body = await response.json(); detail = body.detail || detail; } catch (_) {}
@@ -481,10 +556,36 @@
           }
           return response.status === 204 ? null : response.json();
         },
+        async login() {
+          try {
+            const result = await this.api("/api/v1/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(this.loginForm) });
+            localStorage.setItem("forgeos-token", result.access_token);
+            this.authenticated = true; this.currentUser = result.user; this.loginForm = { username: "", password: "" };
+            await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets(), this.loadUsers()]);
+          } catch (error) { this.toast(error.message, "error"); }
+        },
+        logout() {
+          localStorage.removeItem("forgeos-token"); this.authenticated = false; this.currentUser = null; this.page = "dashboard";
+        },
         async loadSummary() { try { this.summary = await this.api("/api/v1/dashboard/summary"); this.lastUpdated = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch (error) { this.toast(error.message, "error"); } },
         async loadAssets() { try { this.assets = await this.api("/api/v1/assets"); } catch (error) { this.toast(error.message, "error"); } },
         async loadPeople() { try { this.people = await this.api("/api/v1/people"); } catch (error) { this.toast(error.message, "error"); } },
-        async refreshCurrent() { this.loading = true; await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople()]); this.loading = false; this.toast("Workspace refreshed"); },
+        async loadUsers() { if (this.isAdmin) try { this.users = await this.api("/api/v1/users"); } catch (error) { this.toast(error.message, "error"); } },
+        async loadTargets() { try { this.targets = await this.api("/api/targets"); } catch (error) { this.toast(error.message, "error"); } },
+        async refreshCurrent() { this.loading = true; await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets()]); this.loading = false; this.toast("Workspace refreshed"); },
+        async checkTarget(id) { try { await this.api(`/api/targets/${id}/check`, { method: "POST" }); await this.loadTargets(); this.toast("Target checked"); } catch (error) { this.toast(error.message, "error"); } },
+        async loadTargetLogs(target) { try { this.selectedTarget = target; this.selectedTargetLogs = await this.api(`/api/targets/${target.id}/logs?limit=20`); } catch (error) { this.toast(error.message, "error"); } },
+        async addTarget() {
+          const name = window.prompt("Target name");
+          const address = window.prompt("Website URL or network host");
+          if (!name || !address) return;
+          const target_type = address.startsWith("http://") || address.startsWith("https://") ? "website" : "network";
+          try {
+            await this.api("/api/targets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, ip_or_host: address, target_type }) });
+            await this.loadTargets();
+            this.toast("Target added");
+          } catch (error) { this.toast(error.message, "error"); }
+        },
         async createAsset() {
           this.saving = true;
           try {
@@ -492,13 +593,18 @@
             payload.status = payload.status || "active";
             const createdAsset = await this.api("/api/v1/assets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
             if (this.invoiceFile) await this.uploadInvoice(createdAsset.id, this.invoiceFile);
-            this.assetModal = false; this.invoiceFile = null; this.newAsset = { asset_tag: "", type: "", brand: "", model: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" };
+            this.assetModal = false; this.invoiceFile = null; this.newAsset = { asset_tag: "", type: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" };
             await Promise.all([this.loadAssets(), this.loadSummary()]); this.toast("Asset registered successfully");
           } catch (error) { this.toast(error.message, "error"); } finally { this.saving = false; }
         },
         async uploadInvoice(assetId, file) {
           const body = new FormData(); body.append("file", file);
           await this.api(`/api/assets/${assetId}/invoice`, { method: "POST", body });
+        },
+        async createUser() {
+          const username = window.prompt("Username"); const password = window.prompt("Temporary password (10+ characters)"); const role = (window.prompt("Role: ADMIN or VIEW", "VIEW") || "VIEW").toUpperCase();
+          if (!username || !password) return;
+          try { await this.api("/api/v1/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password, role }) }); await this.loadUsers(); this.toast("User created"); } catch (error) { this.toast(error.message, "error"); }
         },
         exportExcel() {
           window.location.assign(`/api/export/excel?lang=${this.language}`);
@@ -525,6 +631,7 @@
         displayParsed(key) { const value = this.importResult?.parsed?.[key]; if (value === null || value === undefined || value === "") return "Not detected"; return key === "ram_mb" ? `${value.toLocaleString()} MB` : value; },
         profileLabel(profile) { return ({ office_desktop: "Office Desktop", laptop: "Laptop", minimal: "Minimal" })[profile] || profile || "Unknown"; },
         statusClass(status) { return ({ active: "bg-emerald-400/10 text-emerald-300", maintenance: "bg-amber-400/10 text-amber-300", stock: "bg-cyan-400/10 text-cyan-300", retired: "bg-slate-700 text-slate-400" })[status?.toLowerCase()] || "bg-slate-700 text-slate-300"; },
+        monitoringStatusClass(status) { return ({ PASS: "bg-emerald-400/10 text-emerald-300", WARNING: "bg-amber-400/10 text-amber-300", FAILED: "bg-rose-400/10 text-rose-300", UNKNOWN: "bg-slate-700 text-slate-300" })[status] || "bg-slate-700 text-slate-300"; },
         initials(name) { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(); },
         relativeTime(value) { const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000); return days <= 0 ? "Today" : days === 1 ? "1d ago" : `${days}d ago`; },
         toast(message, type = "success") { const id = Date.now() + Math.random(); this.toasts.push({ id, message, type }); setTimeout(() => { this.toasts = this.toasts.filter(item => item.id !== id); }, 3500); }
