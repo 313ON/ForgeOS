@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api.router import compat_router, router
-from .api.targets import router as targets_router
+from .api.targets import router as targets_router, v1_router as monitoring_targets_router
 from .database import initialize_database
 from .seed import seed_database
 from .services.scheduler import monitoring_loop
@@ -40,6 +40,7 @@ app = FastAPI(
 app.include_router(router)
 app.include_router(compat_router)
 app.include_router(targets_router)
+app.include_router(monitoring_targets_router)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 

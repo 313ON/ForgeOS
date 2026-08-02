@@ -8,7 +8,8 @@
     "username": "Username",
     "password": "Password",
     "login": "Login",
-    "logout": "Logout"
+    "logout": "Logout",
+    "session_expired": "Your session expired. Please log in again."
   },
   "users": {
     "overline": "ACCESS MANAGEMENT",
@@ -18,9 +19,17 @@
   ,"monitoring": {
     "overline": "OPERATIONS MONITORING",
     "title": "Website and network health",
+    "help": "Authenticated target status and recent check history.",
     "add": "Add Target",
     "check": "Check now",
-    "history": "History"
+    "history": "History",
+    "refresh": "Refresh",
+    "empty": "No monitoring targets configured.",
+    "empty_help": "An administrator can add a website or network host.",
+    "no_history": "No checks have been recorded yet.",
+    "recent": "Recent monitoring events",
+    "edit": "Edit",
+    "delete": "Delete"
   }
   ,"targets": {
     "title": "Monitored Targets",

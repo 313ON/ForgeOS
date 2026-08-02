@@ -7,6 +7,7 @@ import json
 import os
 import secrets
 import time
+from pathlib import Path
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -32,7 +33,8 @@ class AuthenticatedUser:
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
-_RUNTIME_SECRET = os.getenv("FORGEOS_AUTH_SECRET") or secrets.token_urlsafe(32)
+_SECRET_PATH = Path(__file__).resolve().parents[2] / "data" / ".auth_secret"
+_RUNTIME_SECRET = os.getenv("FORGEOS_AUTH_SECRET") or ""
 
 
 def hash_password(password: str) -> str:
@@ -72,11 +74,15 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User is inactive or missing")
-    return AuthenticatedUser(user.id, user.username, UserRole(user.role))
+    try:
+        role = UserRole(user.role.upper())
+    except (AttributeError, ValueError):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "User role is invalid") from None
+    return AuthenticatedUser(user.id, user.username, role)
 
 
 def require_admin(user: AuthenticatedUser = Depends(get_current_user)) -> AuthenticatedUser:
-    if user.role is not UserRole.ADMIN:
+    if user.role != UserRole.ADMIN:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Administrator role required")
     return user
 
@@ -96,6 +102,15 @@ def _decode_token(token: str) -> dict[str, object]:
 
 
 def _secret() -> str:
+    global _RUNTIME_SECRET
+    if _RUNTIME_SECRET:
+        return _RUNTIME_SECRET
+    _SECRET_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if _SECRET_PATH.exists():
+        _RUNTIME_SECRET = _SECRET_PATH.read_text(encoding="utf-8").strip()
+    else:
+        _RUNTIME_SECRET = secrets.token_urlsafe(48)
+        _SECRET_PATH.write_text(_RUNTIME_SECRET, encoding="utf-8")
     return _RUNTIME_SECRET
 
 

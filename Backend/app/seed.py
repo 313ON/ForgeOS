@@ -25,9 +25,12 @@ def seed_database() -> bool:
 
 
 def _ensure_admin(session: Session) -> None:
-    if session.scalar(select(User.id).limit(1)) is not None:
-        return
     username = os.getenv("FORGEOS_ADMIN_USERNAME", "admin")
+    existing = session.scalar(select(User).where(User.username == username))
+    if existing is not None:
+        existing.role = "ADMIN"
+        existing.is_active = True
+        return
     password = os.getenv("FORGEOS_ADMIN_PASSWORD", "ForgeOS-ChangeMe-2026!")
     session.add(User(username=username, password_hash=hash_password(password), role="ADMIN"))
 

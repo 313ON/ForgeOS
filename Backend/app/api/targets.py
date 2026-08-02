@@ -17,9 +17,11 @@ from ..services.monitoring import check_target, json_metadata, validate_network_
 from .router import run_monitoring_check
 
 router = APIRouter(prefix="/api/targets", tags=["targets"])
+v1_router = APIRouter(prefix="/api/v1/monitoring/targets", tags=["monitoring"])
 
 
 @router.get("", response_model=list[TargetListItem])
+@v1_router.get("", response_model=list[TargetListItem])
 def list_targets(db: Session = Depends(get_db), _: AuthenticatedUser = Depends(get_current_user)) -> list[dict[str, Any]]:
     """List monitored targets without returning credential contents."""
     targets = db.scalars(select(MonitoredTarget).order_by(MonitoredTarget.name)).all()
@@ -27,6 +29,7 @@ def list_targets(db: Session = Depends(get_db), _: AuthenticatedUser = Depends(g
 
 
 @router.post("", response_model=TargetOut, status_code=status.HTTP_201_CREATED)
+@v1_router.post("", response_model=TargetOut, status_code=status.HTTP_201_CREATED)
 def create_target(payload: TargetCreate, db: Session = Depends(get_db), _: AuthenticatedUser = Depends(require_admin)) -> dict[str, Any]:
     """Register a website or network target after validating its address."""
     _validate_target_address(payload.target_type, payload.ip_or_host, payload.allow_private_networks)
@@ -38,6 +41,7 @@ def create_target(payload: TargetCreate, db: Session = Depends(get_db), _: Authe
 
 
 @router.put("/{target_id}", response_model=TargetOut)
+@v1_router.put("/{target_id}", response_model=TargetOut)
 def update_target(target_id: int, payload: TargetUpdate, db: Session = Depends(get_db), _: AuthenticatedUser = Depends(require_admin)) -> dict[str, Any]:
     """Update target configuration, including safe address validation."""
     target = _get_target_or_404(db, target_id)
@@ -56,12 +60,14 @@ def update_target(target_id: int, payload: TargetUpdate, db: Session = Depends(g
 
 
 @router.post("/{target_id}/check", response_model=NetworkLogOut)
+@v1_router.post("/{target_id}/check", response_model=NetworkLogOut)
 def check_target_now(target_id: int, db: Session = Depends(get_db), _: AuthenticatedUser = Depends(require_admin)) -> NetworkLog:
     """Run and persist one immediate target check."""
     return run_monitoring_check(_get_target_or_404(db, target_id), db)
 
 
 @router.delete("/{target_id}", status_code=status.HTTP_204_NO_CONTENT)
+@v1_router.delete("/{target_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_target(target_id: int, db: Session = Depends(get_db), _: AuthenticatedUser = Depends(require_admin)) -> None:
     """Delete a target and its dependent monitoring logs."""
     db.delete(_get_target_or_404(db, target_id))
@@ -69,6 +75,7 @@ def delete_target(target_id: int, db: Session = Depends(get_db), _: Authenticate
 
 
 @router.get("/{target_id}/logs", response_model=list[NetworkLogOut])
+@v1_router.get("/{target_id}/logs", response_model=list[NetworkLogOut])
 def list_target_logs(
     target_id: int,
     limit: int = Query(default=200, ge=1, le=1000),

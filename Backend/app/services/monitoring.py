@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 import ssl
+import platform
 
 from ..domain.models import MonitoredTarget
 
@@ -87,11 +88,14 @@ def check_website(
 
 
 def check_network(host: str, timeout: float = 5.0) -> CheckResult:
-    """Run a Windows-compatible ping using an explicit subprocess argument list."""
+    """Run a platform-compatible ping using an explicit subprocess argument list."""
     try:
         validated = validate_network_host(host)
         started = time.perf_counter()
-        command = ["ping", "-n", "1", "-w", str(max(1, int(timeout * 1000))), validated]
+        if platform.system().casefold() == "windows":
+            command = ["ping", "-n", "1", "-w", str(max(1, int(timeout * 1000))), validated]
+        else:
+            command = ["ping", "-c", "1", "-W", str(max(1, int(timeout))), validated]
         completed = subprocess.run(
             command, capture_output=True, text=True, timeout=timeout + 1, shell=False, check=False
         )

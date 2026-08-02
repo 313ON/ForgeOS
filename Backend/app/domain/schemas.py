@@ -108,6 +108,12 @@ class UserCreate(BaseModel):
     role: Literal["ADMIN", "VIEW"] = "VIEW"
 
 
+class UserUpdate(BaseModel):
+    password: str | None = Field(default=None, min_length=10)
+    role: Literal["ADMIN", "VIEW"] | None = None
+    is_active: bool | None = None
+
+
 class UserRead(ORMModel):
     id: int
     username: str

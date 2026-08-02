@@ -15,7 +15,7 @@ from ..database import get_db
 from ..domain.models import Asset, Assignment, MonitoredTarget, NetworkLog, Person, SystemSnapshot, User, Warranty
 from ..domain.schemas import (
     AssetCreate, AssetRead, AssetUpdate, AssignmentCreate, AssignmentRead, IngestResponse,
-    NetworkLogOut, PersonCreate, PersonRead, PersonUpdate, LoginRequest, UserCreate, UserRead,
+    NetworkLogOut, PersonCreate, PersonRead, PersonUpdate, LoginRequest, UserCreate, UserRead, UserUpdate,
 )
 from ..services.ai_agent import query_asset_insights
 from ..services.auth import AuthenticatedUser, UserRole, create_access_token, get_current_user, hash_password, require_admin, verify_password
@@ -47,7 +47,11 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> dict[str, Any
     user = db.scalar(select(User).where(User.username == payload.username))
     if user is None or not user.is_active or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username or password")
-    return {"access_token": create_access_token(user), "token_type": "bearer", "user": {"id": user.id, "username": user.username, "role": user.role}}
+    try:
+        role = UserRole(user.role.upper()).value
+    except (AttributeError, ValueError):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "User role is invalid") from None
+    return {"access_token": create_access_token(user), "token_type": "bearer", "user": {"id": user.id, "username": user.username, "role": role}}
 
 
 @router.post("/auth/logout")
@@ -56,8 +60,15 @@ def logout(_: AuthenticatedUser = Depends(get_current_user)) -> dict[str, str]:
 
 
 @router.get("/auth/me", response_model=UserRead)
-def current_user(user: AuthenticatedUser = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
-    return db.get(User, user.id)
+def current_user(user: AuthenticatedUser = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
+    record = db.get(User, user.id)
+    return {
+        "id": record.id,
+        "username": record.username,
+        "role": user.role.value,
+        "is_active": record.is_active,
+        "created_at": record.created_at,
+    }
 
 
 @router.get("/users", response_model=list[UserRead])
@@ -72,6 +83,44 @@ def create_user(payload: UserCreate, _: AuthenticatedUser = Depends(require_admi
     _commit_or_conflict(db, "Username already exists")
     db.refresh(user)
     return user
+
+
+@router.patch("/users/{user_id}", response_model=UserRead)
+def update_user(
+    user_id: int,
+    payload: UserUpdate,
+    admin: AuthenticatedUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> User:
+    user = _get_or_404(db, User, user_id, "User")
+    values = payload.model_dump(exclude_unset=True)
+    if user.id == admin.id and values.get("is_active") is False:
+        raise HTTPException(400, "You cannot deactivate your own account")
+    if user.role == "ADMIN" and (values.get("role") == "VIEW" or values.get("is_active") is False):
+        _require_another_admin(db, user.id)
+    password = values.pop("password", None)
+    if password:
+        user.password_hash = hash_password(password)
+    for key, value in values.items():
+        setattr(user, key, value)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: int,
+    admin: AuthenticatedUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
+    user = _get_or_404(db, User, user_id, "User")
+    if user.id == admin.id:
+        raise HTTPException(400, "You cannot delete your own account")
+    if user.role == "ADMIN":
+        _require_another_admin(db, user.id)
+    db.delete(user)
+    db.commit()
 
 
 @router.get("/dashboard/summary")
@@ -329,8 +378,9 @@ def run_monitoring_check(target: MonitoredTarget, db: Session) -> NetworkLog:
     target.last_checked_at = now_utc()
     target.last_error = result.message
     target.ssl_metadata = json_metadata(result.ssl_metadata)
+    status_code = {"PASS": 1, "FAILED": 0}.get(result.status, -1)
     event = NetworkLog(
-        target_id=target.id, latency_ms=result.latency_ms, status_code=1 if result.status == "PASS" else 0,
+        target_id=target.id, latency_ms=result.latency_ms, status_code=status_code,
         check_type=target.target_type, status=result.status, message=result.message,
         response_status_code=result.response_status_code,
     )
@@ -397,6 +447,18 @@ def _commit_or_conflict(db: Session, detail: str) -> None:
     except (IntegrityError, ValueError) as error:
         db.rollback()
         raise HTTPException(409, detail) from error
+
+
+def _require_another_admin(db: Session, excluded_user_id: int) -> None:
+    other_admin = db.scalar(
+        select(User.id).where(
+            User.id != excluded_user_id,
+            User.role == "ADMIN",
+            User.is_active.is_(True),
+        ).limit(1)
+    )
+    if other_admin is None:
+        raise HTTPException(409, "At least one active administrator is required")
 
 
 def _recent_activity(db: Session) -> list[dict[str, Any]]:

@@ -39,17 +39,21 @@ class OperationsUpgradeTests(unittest.TestCase):
         self.assertEqual(validate_network_host("192.0.2.10"), "192.0.2.10")
 
     @patch("app.services.monitoring.subprocess.run")
-    def test_network_check_maps_ping_success(self, run) -> None:
+    @patch("app.services.monitoring.platform.system", return_value="Windows")
+    def test_network_check_maps_ping_success(self, platform_system, run) -> None:
         run.return_value.returncode = 0
         result = check_network("192.0.2.10", timeout=1)
         self.assertEqual(result.status, PASS)
         self.assertEqual(run.call_args.kwargs["shell"], False)
+        self.assertEqual(run.call_args.args[0][:4], ["ping", "-n", "1", "-w"])
 
     @patch("app.services.monitoring.subprocess.run")
-    def test_network_check_maps_ping_failure(self, run) -> None:
+    @patch("app.services.monitoring.platform.system", return_value="Linux")
+    def test_network_check_maps_ping_failure(self, platform_system, run) -> None:
         run.return_value.returncode = 1
         result = check_network("192.0.2.10", timeout=1)
         self.assertEqual(result.status, FAILED)
+        self.assertEqual(run.call_args.args[0][:4], ["ping", "-c", "1", "-W"])
 
 
 if __name__ == "__main__":

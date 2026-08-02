@@ -75,5 +75,6 @@ private or local destinations unless explicitly opted in.
 ## Tests
 
 ```bash
+python -m pip install -r requirements-dev.txt
 python -m pytest
 ```

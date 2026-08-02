@@ -256,10 +256,10 @@
                       <td class="px-5 py-4 text-slate-400" x-text="asset.location || '—'"></td>
                       <td class="px-5 py-4"><span class="rounded-full px-2.5 py-1 text-xs font-medium capitalize" :class="statusClass(asset.status)" x-text="asset.status"></span></td>
                       <td class="px-5 py-4">
-                        <a x-show="asset.invoice_path" :href="`/api/assets/${asset.id}/invoice`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-2.5 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20">
+                        <button x-show="asset.invoice_path" @click="downloadInvoice(asset)" class="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-2.5 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20">
                           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z"/><path d="M14 3v6h6"/></svg>
                           View
-                        </a>
+                        </button>
                         <span x-show="!asset.invoice_path" class="text-xs text-slate-600">—</span>
                       </td>
                     </tr>
@@ -302,12 +302,52 @@
         </section>
 
         <section x-show="page === 'monitoring'" x-cloak x-transition.opacity>
-          <div class="mb-6">
-            <p class="text-sm font-medium text-cyan-400" data-i18n="monitoring.overline">OPERATIONS MONITORING</p>
-            <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="monitoring.title">Website and network health</h2>
-            <button @click="addTarget()" class="mt-4 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="monitoring.add">Add Target</button>
+          <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p class="text-sm font-medium text-cyan-400" data-i18n="monitoring.overline">OPERATIONS MONITORING</p>
+              <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="monitoring.title">Website and network health</h2>
+              <p class="mt-2 text-sm text-slate-500" data-i18n="monitoring.help">Authenticated target status and recent check history.</p>
+            </div>
+            <div class="flex gap-2">
+              <button @click="refreshMonitoring(true)" :disabled="monitoringLoading" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 disabled:opacity-50" data-i18n="monitoring.refresh">Refresh</button>
+              <button x-show="isAdmin" @click="openTargetForm()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="monitoring.add">Add Target</button>
+            </div>
           </div>
-          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+
+          <div x-show="monitoringError" class="mb-5 rounded-xl border border-rose-400/20 bg-rose-400/5 p-4 text-sm text-rose-300" x-text="monitoringError"></div>
+          <div x-show="monitoringLoading" class="grid gap-4 md:grid-cols-3">
+            <template x-for="index in 3" :key="index"><div class="h-28 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60"></div></template>
+          </div>
+
+          <div x-show="!monitoringLoading" class="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <template x-for="item in monitoringSummary" :key="item.label">
+              <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
+                <p class="text-xs uppercase tracking-wider text-slate-500" x-text="item.label"></p>
+                <p class="mt-2 text-2xl font-semibold" :class="item.color" x-text="item.value"></p>
+              </div>
+            </template>
+          </div>
+
+          <form x-show="showTargetForm && isAdmin" @submit.prevent="saveTarget()" class="mb-6 grid gap-4 rounded-2xl border border-cyan-400/20 bg-slate-900/75 p-5 md:grid-cols-2">
+            <input x-model="targetForm.name" required placeholder="Target name" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white outline-none focus:border-cyan-500/50">
+            <select x-model="targetForm.target_type" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white">
+              <option value="website">Website</option><option value="network">Network host</option>
+            </select>
+            <input x-model="targetForm.ip_or_host" required :placeholder="targetForm.target_type === 'website' ? 'https://example.com' : '192.168.1.1'" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white outline-none focus:border-cyan-500/50">
+            <input x-model.number="targetForm.ping_interval_sec" type="number" min="5" required placeholder="Interval seconds" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white outline-none focus:border-cyan-500/50">
+            <label x-show="targetForm.target_type === 'website'" class="flex items-center gap-2 text-sm text-slate-400"><input x-model="targetForm.allow_private_networks" type="checkbox"> <span data-i18n="monitoring.allow_private">Allow private/internal website address</span></label>
+            <label class="flex items-center gap-2 text-sm text-slate-400"><input x-model="targetForm.enabled" type="checkbox"> <span data-i18n="monitoring.enabled">Enabled</span></label>
+            <div class="flex justify-end gap-2 md:col-span-2">
+              <button type="button" @click="showTargetForm = false" class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancel</button>
+              <button :disabled="monitoringSaving" class="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50" x-text="monitoringSaving ? 'Saving…' : 'Save Target'"></button>
+            </div>
+          </form>
+
+          <div x-show="!monitoringLoading && !targets.length" class="rounded-2xl border border-slate-800 bg-slate-900/60 px-6 py-16 text-center">
+            <p class="font-medium text-slate-300" data-i18n="monitoring.empty">No monitoring targets configured.</p>
+            <p class="mt-2 text-sm text-slate-600" data-i18n="monitoring.empty_help">An administrator can add a website or network host.</p>
+          </div>
+          <div x-show="!monitoringLoading && targets.length" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <template x-for="target in targets" :key="target.id">
               <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
                 <div class="flex items-start justify-between gap-3">
@@ -315,21 +355,38 @@
                   <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="monitoringStatusClass(target.status)" x-text="target.status"></span>
                 </div>
                 <div class="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-400">
-                  <span x-text="target.target_type"></span><span x-text="target.last_latency_ms ? `${target.last_latency_ms.toFixed(1)} ms` : '—'"></span>
+                  <span class="capitalize" x-text="target.target_type"></span><span x-text="target.last_latency_ms != null ? `${target.last_latency_ms.toFixed(1)} ms` : 'Not checked'"></span>
+                  <span x-text="target.enabled ? 'Enabled' : 'Disabled'"></span><span x-text="target.last_checked_at ? relativeTime(target.last_checked_at) : 'Never checked'"></span>
                 </div>
-                <p x-show="target.last_error" class="mt-3 text-xs text-rose-300" x-text="target.last_error"></p>
-                <div class="mt-4 flex gap-2">
-                  <button @click="checkTarget(target.id)" class="rounded-lg bg-cyan-400/10 px-3 py-2 text-xs font-medium text-cyan-300" data-i18n="monitoring.check">Check now</button>
+                <p x-show="target.last_error" class="mt-3 break-words text-xs text-rose-300" x-text="target.last_error"></p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <button x-show="isAdmin" @click="checkTarget(target.id)" class="rounded-lg bg-cyan-400/10 px-3 py-2 text-xs font-medium text-cyan-300" data-i18n="monitoring.check">Check now</button>
                   <button @click="loadTargetLogs(target)" class="rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-slate-300" data-i18n="monitoring.history">History</button>
+                  <button x-show="isAdmin" @click="editTarget(target)" class="rounded-lg bg-amber-400/10 px-3 py-2 text-xs font-medium text-amber-300" data-i18n="monitoring.edit">Edit</button>
+                  <button x-show="isAdmin" @click="deleteTarget(target)" class="rounded-lg bg-rose-400/10 px-3 py-2 text-xs font-medium text-rose-300" data-i18n="monitoring.delete">Delete</button>
                 </div>
               </div>
             </template>
           </div>
-          <div x-show="selectedTargetLogs.length" class="mt-6 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
-            <h3 class="font-semibold text-white" x-text="selectedTarget?.name"></h3>
-            <div class="mt-4 space-y-2 text-xs">
+
+          <div x-show="selectedTarget" class="mt-6 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
+            <h3 class="font-semibold text-white"><span x-text="selectedTarget?.name"></span> · <span data-i18n="monitoring.history">History</span></h3>
+            <p x-show="selectedLogsLoading" class="mt-4 text-sm text-slate-500">Loading history…</p>
+            <p x-show="selectedLogsError" class="mt-4 text-sm text-rose-300" x-text="selectedLogsError"></p>
+            <p x-show="!selectedLogsLoading && !selectedLogsError && !selectedTargetLogs.length" class="mt-4 text-sm text-slate-500" data-i18n="monitoring.no_history">No checks have been recorded for this target.</p>
+            <div x-show="selectedTargetLogs.length" class="mt-4 space-y-2 text-xs">
               <template x-for="event in selectedTargetLogs" :key="event.id">
-                <div class="flex justify-between border-b border-slate-800/60 py-2"><span x-text="event.status"></span><span class="text-slate-500" x-text="event.message || event.timestamp"></span></div>
+                <div class="grid gap-2 border-b border-slate-800/60 py-2 sm:grid-cols-[100px_120px_1fr]"><span :class="monitoringStatusClass(event.status)" class="rounded-full px-2 py-1 text-center" x-text="event.status"></span><span class="text-slate-500" x-text="new Date(event.timestamp).toLocaleString()"></span><span class="text-slate-400" x-text="event.message || (event.latency_ms != null ? `${event.latency_ms.toFixed(1)} ms` : 'Completed')"></span></div>
+              </template>
+            </div>
+          </div>
+
+          <div class="mt-6 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
+            <h3 class="font-semibold text-white" data-i18n="monitoring.recent">Recent monitoring events</h3>
+            <p x-show="!monitoringHistory.length" class="mt-4 text-sm text-slate-500" data-i18n="monitoring.no_history">No checks have been recorded yet.</p>
+            <div x-show="monitoringHistory.length" class="mt-4 max-h-80 space-y-2 overflow-y-auto text-xs">
+              <template x-for="event in monitoringHistory" :key="event.id">
+                <div class="grid gap-2 border-b border-slate-800/60 py-2 sm:grid-cols-[1fr_100px_140px]"><span class="text-slate-300" x-text="targetName(event.target_id)"></span><span x-text="event.status"></span><span class="text-slate-500" x-text="new Date(event.timestamp).toLocaleString()"></span></div>
               </template>
             </div>
           </div>
@@ -338,10 +395,18 @@
         <section x-show="page === 'users'" x-cloak x-transition.opacity>
           <div class="mb-6 flex items-center justify-between">
             <div><p class="text-sm font-medium text-cyan-400" data-i18n="users.overline">ACCESS MANAGEMENT</p><h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="users.title">ForgeOS users</h2></div>
-            <button @click="createUser()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="users.new">New User</button>
+            <button @click="openUserForm()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="users.new">New User</button>
           </div>
+          <form x-show="showUserForm" @submit.prevent="saveUser()" class="mb-5 grid gap-4 rounded-2xl border border-cyan-400/20 bg-slate-900/75 p-5 md:grid-cols-2">
+            <input x-model="userForm.username" :disabled="Boolean(userForm.id)" required placeholder="Username" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white disabled:opacity-60">
+            <input x-model="userForm.password" type="password" :required="!userForm.id" placeholder="Password (10+ characters)" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white">
+            <select x-model="userForm.role" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white"><option value="VIEW">VIEW</option><option value="ADMIN">ADMIN</option></select>
+            <label class="flex items-center gap-2 text-sm text-slate-400"><input x-model="userForm.is_active" type="checkbox"> Active account</label>
+            <div class="flex justify-end gap-2 md:col-span-2"><button type="button" @click="showUserForm = false" class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancel</button><button class="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950">Save User</button></div>
+          </form>
+          <input x-model="userSearch" type="search" placeholder="Search users..." class="mb-4 w-full max-w-sm rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white">
           <div class="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60">
-            <template x-for="user in users" :key="user.id"><div class="flex items-center justify-between border-b border-slate-800/60 px-5 py-4"><span class="font-medium text-white" x-text="user.username"></span><span class="rounded-full bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-300" x-text="user.role"></span></div></template>
+            <template x-for="user in filteredUsers" :key="user.id"><div class="flex items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4"><div><span class="font-medium text-white" x-text="user.username"></span><p class="mt-1 text-xs" :class="user.is_active ? 'text-emerald-300' : 'text-slate-600'" x-text="user.is_active ? 'Active' : 'Inactive'"></p></div><div class="flex items-center gap-2"><span class="rounded-full bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-300" x-text="user.role"></span><button @click="editUser(user)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs text-amber-300">Edit</button><button x-show="user.id !== currentUser?.id" @click="deleteUser(user)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs text-rose-300">Delete</button></div></div></template>
           </div>
         </section>
 
@@ -462,6 +527,7 @@
     </form>
   </div>
 
+  <script src="/static/js/api.js"></script>
   <script src="/static/js/i18n.js"></script>
   <script>
     function forgeApp() {
@@ -471,7 +537,10 @@
         currentUser: null, loginForm: { username: "", password: "" },
         language: localStorage.getItem("forgeos-language") || "en", dictionary: {},
         dragging: false, selectedFile: null, uploading: false, uploadProgress: 0, importResult: null,
-        assetSearch: "", assets: [], people: [], users: [], targets: [], selectedTarget: null, selectedTargetLogs: [], toasts: [], lastUpdated: "just now",
+        assetSearch: "", userSearch: "", assets: [], people: [], users: [], targets: [], monitoringHistory: [], selectedTarget: null, selectedTargetLogs: [], toasts: [], lastUpdated: "just now",
+        monitoringLoading: false, monitoringSaving: false, monitoringError: "", selectedLogsLoading: false, selectedLogsError: "", showTargetForm: false, monitoringTimer: null,
+        targetForm: { id: null, name: "", ip_or_host: "", target_type: "website", ping_interval_sec: 60, allow_private_networks: false, enabled: true },
+        showUserForm: false, userForm: { id: null, username: "", password: "", role: "VIEW", is_active: true },
         summary: { counts: { assets: 0, people: 0, active_assignments: 0, system_snapshots: 0 }, warnings: { expiring_warranties: [], missing_serial: [], unassigned_assets: [] }, warning_count: 0, recent_activity: [] },
         invoiceFile: null,
         newAsset: { asset_tag: "", type: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" },
@@ -504,6 +573,10 @@
             this.language = event.detail.language;
             this.dictionary = event.detail.dictionary || {};
           });
+          window.addEventListener("forge:auth-expired", () => {
+            this.logout();
+            this.toast(this.translated("auth.session_expired", "Your session expired. Please log in again."), "error");
+          });
           if (window.forgeI18n) await window.forgeI18n.setLanguage(this.language);
           if (this.authenticated) {
             try { this.currentUser = await this.api("/api/v1/auth/me"); } catch (_) { this.logout(); }
@@ -511,7 +584,19 @@
           }
           this.loading = false;
         },
-        get isAdmin() { return this.currentUser?.role === "ADMIN"; },
+        get isAdmin() { return String(this.currentUser?.role || "").toUpperCase() === "ADMIN"; },
+        get monitoringSummary() {
+          return [
+            { label: "Targets", value: this.targets.length, color: "text-white" },
+            { label: "Passing", value: this.targets.filter(item => item.status === "PASS").length, color: "text-emerald-300" },
+            { label: "Warning", value: this.targets.filter(item => item.status === "WARNING").length, color: "text-amber-300" },
+            { label: "Failed", value: this.targets.filter(item => item.status === "FAILED").length, color: "text-rose-300" },
+          ];
+        },
+        get filteredUsers() {
+          const query = this.userSearch.trim().toLowerCase();
+          return query ? this.users.filter(user => `${user.username} ${user.role}`.toLowerCase().includes(query)) : this.users;
+        },
         get pageTitle() {
           const item = this.navigation.find(entry => entry.id === this.page);
           return this.translated(item?.labelKey, item?.label || "ForgeOS");
@@ -542,19 +627,18 @@
             { key: "assignment", title: "Unassigned assets", detail: w.unassigned_assets[0]?.asset_tag ? `${w.unassigned_assets[0].asset_tag} is available` : "Every asset has an owner", count: w.unassigned_assets.length, color: "bg-cyan-400/10 text-cyan-300", icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') }
           ];
         },
-        navigate(page) { this.page = page; window.scrollTo({ top: 0, behavior: "smooth" }); },
-        async api(url, options = {}) {
-          const headers = new Headers(options.headers || {});
-          const token = localStorage.getItem("forgeos-token");
-          if (token) headers.set("Authorization", `Bearer ${token}`);
-          const response = await fetch(url, { ...options, headers });
-          if (response.status === 401 && !url.includes("/auth/login")) { this.logout(); throw new Error("Authentication required"); }
-          if (!response.ok) {
-            let detail = "Request failed";
-            try { const body = await response.json(); detail = body.detail || detail; } catch (_) {}
-            throw new Error(Array.isArray(detail) ? detail.map(item => item.msg).join(", ") : detail);
+        navigate(page) {
+          this.page = page;
+          if (page === "monitoring") {
+            this.refreshMonitoring();
+            this.startMonitoringPolling();
+          } else {
+            this.stopMonitoringPolling();
           }
-          return response.status === 204 ? null : response.json();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        },
+        async api(url, options = {}) {
+          return window.forgeApi.request(url, options);
         },
         async login() {
           try {
@@ -565,27 +649,77 @@
           } catch (error) { this.toast(error.message, "error"); }
         },
         logout() {
-          localStorage.removeItem("forgeos-token"); this.authenticated = false; this.currentUser = null; this.page = "dashboard";
+          localStorage.removeItem("forgeos-token"); this.authenticated = false; this.currentUser = null; this.page = "dashboard"; this.stopMonitoringPolling();
         },
         async loadSummary() { try { this.summary = await this.api("/api/v1/dashboard/summary"); this.lastUpdated = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch (error) { this.toast(error.message, "error"); } },
         async loadAssets() { try { this.assets = await this.api("/api/v1/assets"); } catch (error) { this.toast(error.message, "error"); } },
         async loadPeople() { try { this.people = await this.api("/api/v1/people"); } catch (error) { this.toast(error.message, "error"); } },
         async loadUsers() { if (this.isAdmin) try { this.users = await this.api("/api/v1/users"); } catch (error) { this.toast(error.message, "error"); } },
-        async loadTargets() { try { this.targets = await this.api("/api/targets"); } catch (error) { this.toast(error.message, "error"); } },
+        async loadTargets() { try { this.targets = await this.api("/api/v1/monitoring/targets"); } catch (error) { this.toast(error.message, "error"); } },
         async refreshCurrent() { this.loading = true; await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets()]); this.loading = false; this.toast("Workspace refreshed"); },
-        async checkTarget(id) { try { await this.api(`/api/targets/${id}/check`, { method: "POST" }); await this.loadTargets(); this.toast("Target checked"); } catch (error) { this.toast(error.message, "error"); } },
-        async loadTargetLogs(target) { try { this.selectedTarget = target; this.selectedTargetLogs = await this.api(`/api/targets/${target.id}/logs?limit=20`); } catch (error) { this.toast(error.message, "error"); } },
-        async addTarget() {
-          const name = window.prompt("Target name");
-          const address = window.prompt("Website URL or network host");
-          if (!name || !address) return;
-          const target_type = address.startsWith("http://") || address.startsWith("https://") ? "website" : "network";
+        async refreshMonitoring(showToast = false) {
+          this.monitoringLoading = true; this.monitoringError = "";
           try {
-            await this.api("/api/targets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, ip_or_host: address, target_type }) });
-            await this.loadTargets();
-            this.toast("Target added");
+            const [targets, history] = await Promise.all([
+              this.api("/api/v1/monitoring/targets"),
+              this.api("/api/v1/monitoring/history?limit=200"),
+            ]);
+            this.targets = targets; this.monitoringHistory = history;
+            if (showToast) this.toast(this.translated("monitoring.refreshed", "Monitoring refreshed"));
+          } catch (error) {
+            this.monitoringError = error.message;
+            if (showToast) this.toast(error.message, "error");
+          } finally { this.monitoringLoading = false; }
+        },
+        startMonitoringPolling() {
+          this.stopMonitoringPolling();
+          this.monitoringTimer = setInterval(() => { if (this.page === "monitoring") this.refreshMonitoring(false); }, 30000);
+        },
+        stopMonitoringPolling() { if (this.monitoringTimer) clearInterval(this.monitoringTimer); this.monitoringTimer = null; },
+        async checkTarget(id) {
+          try {
+            await this.api(`/api/v1/monitoring/targets/${id}/check`, { method: "POST", timeoutMs: 70000 });
+            await this.refreshMonitoring(false);
+            if (this.selectedTarget?.id === id) await this.loadTargetLogs(this.selectedTarget);
+            this.toast(this.translated("monitoring.checked", "Target checked"));
           } catch (error) { this.toast(error.message, "error"); }
         },
+        async loadTargetLogs(target) {
+          this.selectedTarget = target; this.selectedTargetLogs = []; this.selectedLogsLoading = true; this.selectedLogsError = "";
+          try { this.selectedTargetLogs = await this.api(`/api/v1/monitoring/targets/${target.id}/logs?limit=50`); }
+          catch (error) { this.selectedLogsError = error.message; }
+          finally { this.selectedLogsLoading = false; }
+        },
+        openTargetForm() {
+          this.targetForm = { id: null, name: "", ip_or_host: "", target_type: "website", ping_interval_sec: 60, allow_private_networks: false, enabled: true };
+          this.showTargetForm = true;
+        },
+        editTarget(target) {
+          this.targetForm = { id: target.id, name: target.name, ip_or_host: target.ip_or_host, target_type: target.target_type, ping_interval_sec: target.ping_interval_sec, allow_private_networks: target.allow_private_networks, enabled: target.enabled };
+          this.showTargetForm = true;
+        },
+        async saveTarget() {
+          this.monitoringSaving = true;
+          const editing = Boolean(this.targetForm.id);
+          const path = editing ? `/api/v1/monitoring/targets/${this.targetForm.id}` : "/api/v1/monitoring/targets";
+          const payload = { ...this.targetForm }; delete payload.id;
+          if (payload.target_type === "website" && !/^https?:\/\//i.test(payload.ip_or_host)) payload.ip_or_host = `https://${payload.ip_or_host}`;
+          try {
+            await this.api(path, { method: editing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            this.showTargetForm = false; await this.refreshMonitoring(false);
+            this.toast(editing ? "Target updated" : "Target added");
+          } catch (error) { this.toast(error.message, "error"); }
+          finally { this.monitoringSaving = false; }
+        },
+        async deleteTarget(target) {
+          if (!window.confirm(`Delete monitoring target "${target.name}"?`)) return;
+          try {
+            await this.api(`/api/v1/monitoring/targets/${target.id}`, { method: "DELETE" });
+            if (this.selectedTarget?.id === target.id) { this.selectedTarget = null; this.selectedTargetLogs = []; }
+            await this.refreshMonitoring(false); this.toast("Target deleted");
+          } catch (error) { this.toast(error.message, "error"); }
+        },
+        targetName(targetId) { return this.targets.find(item => item.id === targetId)?.name || `Target #${targetId}`; },
         async createAsset() {
           this.saving = true;
           try {
@@ -601,17 +735,31 @@
           const body = new FormData(); body.append("file", file);
           await this.api(`/api/assets/${assetId}/invoice`, { method: "POST", body });
         },
-        async createUser() {
-          const username = window.prompt("Username"); const password = window.prompt("Temporary password (10+ characters)"); const role = (window.prompt("Role: ADMIN or VIEW", "VIEW") || "VIEW").toUpperCase();
-          if (!username || !password) return;
-          try { await this.api("/api/v1/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password, role }) }); await this.loadUsers(); this.toast("User created"); } catch (error) { this.toast(error.message, "error"); }
+        async downloadInvoice(asset) {
+          try { await window.forgeApi.download(`/api/assets/${asset.id}/invoice`, `${asset.asset_tag}-invoice`); }
+          catch (error) { this.toast(error.message, "error"); }
         },
-        exportExcel() {
-          window.location.assign(`/api/export/excel?lang=${this.language}`);
+        openUserForm() { this.userForm = { id: null, username: "", password: "", role: "VIEW", is_active: true }; this.showUserForm = true; },
+        editUser(user) { this.userForm = { id: user.id, username: user.username, password: "", role: user.role, is_active: user.is_active }; this.showUserForm = true; },
+        async saveUser() {
+          const editing = Boolean(this.userForm.id);
+          const path = editing ? `/api/v1/users/${this.userForm.id}` : "/api/v1/users";
+          const payload = editing ? { password: this.userForm.password || undefined, role: this.userForm.role, is_active: this.userForm.is_active } : { username: this.userForm.username, password: this.userForm.password, role: this.userForm.role };
+          if (editing && !payload.password) delete payload.password;
+          try {
+            await this.api(path, { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            this.showUserForm = false;
+            if (this.userForm.id === this.currentUser?.id) this.currentUser = await this.api("/api/v1/auth/me");
+            await this.loadUsers();
+            this.toast(editing ? "User updated" : "User created");
+          } catch (error) { this.toast(error.message, "error"); }
         },
-        exportPdf() {
-          window.location.assign(`/api/export/pdf?lang=${this.language}`);
+        async deleteUser(user) {
+          if (!window.confirm(`Delete user "${user.username}"?`)) return;
+          try { await this.api(`/api/v1/users/${user.id}`, { method: "DELETE" }); await this.loadUsers(); this.toast("User deleted"); } catch (error) { this.toast(error.message, "error"); }
         },
+        async exportExcel() { try { await window.forgeApi.download(`/api/export/excel?lang=${this.language}`, "forgeos-assets.xlsx"); } catch (error) { this.toast(error.message, "error"); } },
+        async exportPdf() { try { await window.forgeApi.download(`/api/export/pdf?lang=${this.language}`, "forgeos-assets.pdf"); } catch (error) { this.toast(error.message, "error"); } },
         selectFile(file) {
           if (!file) return;
           if (!file.name.toLowerCase().endsWith(".txt")) { this.toast("Choose a .txt report", "error"); return; }
@@ -634,7 +782,10 @@
         monitoringStatusClass(status) { return ({ PASS: "bg-emerald-400/10 text-emerald-300", WARNING: "bg-amber-400/10 text-amber-300", FAILED: "bg-rose-400/10 text-rose-300", UNKNOWN: "bg-slate-700 text-slate-300" })[status] || "bg-slate-700 text-slate-300"; },
         initials(name) { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(); },
         relativeTime(value) { const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000); return days <= 0 ? "Today" : days === 1 ? "1d ago" : `${days}d ago`; },
-        toast(message, type = "success") { const id = Date.now() + Math.random(); this.toasts.push({ id, message, type }); setTimeout(() => { this.toasts = this.toasts.filter(item => item.id !== id); }, 3500); }
+        toast(message, type = "success") {
+          if (this.toasts.some(item => item.message === message && item.type === type)) return;
+          const id = Date.now() + Math.random(); this.toasts.push({ id, message, type }); setTimeout(() => { this.toasts = this.toasts.filter(item => item.id !== id); }, 4500);
+        }
       };
     }
   </script>

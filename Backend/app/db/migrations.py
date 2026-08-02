@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import sqlite3
 from sqlalchemy import Engine, inspect, text
 
 
@@ -145,3 +147,46 @@ def _migrate_legacy_target_status_constraint(engine: Engine) -> list[str]:
         )
         connection.execute(text("PRAGMA foreign_keys=ON"))
     return ["monitored_targets.status_constraint"]
+
+
+def repair_network_logs_fk(db_path: str):
+    logger = logging.getLogger("migrations")
+    CREATE_TABLE_SQL = """
+    CREATE TABLE network_logs_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_id INTEGER NOT NULL,
+        latency_ms FLOAT,
+        status_code INTEGER,
+        timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        check_type VARCHAR(30) NOT NULL DEFAULT 'network',
+        status VARCHAR(20) NOT NULL DEFAULT 'UNKNOWN',
+        message TEXT,
+        response_status_code INTEGER,
+        FOREIGN KEY(target_id) REFERENCES monitored_targets(id) ON DELETE CASCADE
+    );
+    """
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("BEGIN TRANSACTION")
+        cursor.execute("PRAGMA foreign_keys=OFF")
+        cursor.execute(CREATE_TABLE_SQL)
+        cols = [row[1] for row in cursor.execute("PRAGMA table_info(network_logs)").fetchall()]
+        col_str = ", ".join(cols)
+        cursor.execute(f"INSERT INTO network_logs_new ({col_str}) SELECT {col_str} FROM network_logs")
+        cursor.execute("DROP TABLE network_logs")
+        cursor.execute("ALTER TABLE network_logs_new RENAME TO network_logs")
+        
+        fk_list = cursor.execute("PRAGMA foreign_key_list(network_logs)").fetchall()
+        if not any(fk[2] == 'monitored_targets' for fk in fk_list):
+            raise Exception("FK repair failed: Target mismatch.")
+
+        cursor.execute("PRAGMA foreign_keys=ON")
+        conn.commit()
+        logger.info(f"Fixed FK for {db_path}")
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Migration error: {e}")
+        raise
+    finally:
+        conn.close()

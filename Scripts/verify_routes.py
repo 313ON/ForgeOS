@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
-sys.path.insert(0, "Backend")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "Backend"))
 
 from app.main import app
 
@@ -17,9 +20,14 @@ def main() -> int:
         ("POST", "/api/v1/people"),
         ("GET", "/api/v1/assets"),
         ("POST", "/api/v1/assets"),
+        ("PATCH", "/api/v1/users/{user_id}"),
+        ("DELETE", "/api/v1/users/{user_id}"),
         ("POST", "/api/v1/ingest"),
         ("GET", "/api/targets"),
         ("POST", "/api/targets/{target_id}/check"),
+        ("GET", "/api/v1/monitoring/history"),
+        ("GET", "/api/v1/monitoring/targets"),
+        ("POST", "/api/v1/monitoring/targets/{target_id}/check"),
     }
     missing = required - routes
     if missing:
