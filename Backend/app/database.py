@@ -35,9 +35,10 @@ def initialize_database() -> None:
 
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
-    from .db.migrations import migrate_asset_columns
+    from .db.migrations import migrate_asset_columns, migrate_export_log_table
 
     migrate_asset_columns(engine)
+    migrate_export_log_table(engine)
 
 
 def get_db() -> Generator[Session, None, None]:

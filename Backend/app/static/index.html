@@ -68,11 +68,8 @@
 
       <div class="space-y-2 px-4">
         <p class="px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">Reports</p>
-        <button @click="exportExcel()" class="sidebar-item w-full rounded-xl py-3 text-sm font-medium text-slate-400 transition hover:bg-emerald-400/10 hover:text-emerald-300">
-          <span class="text-emerald-300">▦</span><span data-i18n="export_excel">Export Excel</span>
-        </button>
-        <button @click="exportPdf()" class="sidebar-item w-full rounded-xl py-3 text-sm font-medium text-slate-400 transition hover:bg-cyan-400/10 hover:text-cyan-300">
-          <span class="text-cyan-300">▤</span><span data-i18n="export_pdf">Export PDF</span>
+        <button @click="navigate('reports')" class="sidebar-item w-full rounded-xl py-3 text-sm font-medium text-slate-400 transition hover:bg-emerald-400/10 hover:text-emerald-300">
+          <span class="text-emerald-300">▦</span><span data-i18n="nav.reports">Reports</span>
         </button>
       </div>
 
@@ -214,7 +211,7 @@
           </div>
         </section>
 
-        <section x-show="page === 'assets'" x-cloak x-transition.opacity>
+        <section x-show="page === 'assets'" x-cloak x-transition.opacity id="assets">
           <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p class="text-sm font-medium text-cyan-400" data-i18n="assets.overline">ASSET REGISTER</p>
@@ -392,21 +389,32 @@
           </div>
         </section>
 
-        <section x-show="page === 'users'" x-cloak x-transition.opacity>
-          <div class="mb-6 flex items-center justify-between">
-            <div><p class="text-sm font-medium text-cyan-400" data-i18n="users.overline">ACCESS MANAGEMENT</p><h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="users.title">ForgeOS users</h2></div>
-            <button @click="openUserForm()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="users.new">New User</button>
+<section x-show="page === 'preferences'" x-cloak x-transition.opacity id="preferences">
+          <div class="mb-6">
+            <p class="text-sm font-medium text-cyan-400" data-i18n="preferences.overline">PREFERENCES</p>
+            <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="preferences.title">Preferences</h2>
           </div>
-          <form x-show="showUserForm" @submit.prevent="saveUser()" class="mb-5 grid gap-4 rounded-2xl border border-cyan-400/20 bg-slate-900/75 p-5 md:grid-cols-2">
-            <input x-model="userForm.username" :disabled="Boolean(userForm.id)" required placeholder="Username" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white disabled:opacity-60">
-            <input x-model="userForm.password" type="password" :required="!userForm.id" placeholder="Password (10+ characters)" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white">
-            <select x-model="userForm.role" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white"><option value="VIEW">VIEW</option><option value="ADMIN">ADMIN</option></select>
-            <label class="flex items-center gap-2 text-sm text-slate-400"><input x-model="userForm.is_active" type="checkbox"> Active account</label>
-            <div class="flex justify-end gap-2 md:col-span-2"><button type="button" @click="showUserForm = false" class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancel</button><button class="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950">Save User</button></div>
-          </form>
-          <input x-model="userSearch" type="search" placeholder="Search users..." class="mb-4 w-full max-w-sm rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white">
-          <div class="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60">
-            <template x-for="user in filteredUsers" :key="user.id"><div class="flex items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4"><div><span class="font-medium text-white" x-text="user.username"></span><p class="mt-1 text-xs" :class="user.is_active ? 'text-emerald-300' : 'text-slate-600'" x-text="user.is_active ? 'Active' : 'Inactive'"></p></div><div class="flex items-center gap-2"><span class="rounded-full bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-300" x-text="user.role"></span><button @click="editUser(user)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs text-amber-300">Edit</button><button x-show="user.id !== currentUser?.id" @click="deleteUser(user)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs text-rose-300">Delete</button></div></div></template>
+          <div class="mb-6 flex gap-2 border-b border-slate-800/70">
+            <button @click="preferencesTab = 'access'" x-text="translated('preferences.tab.access', 'Access Management')"
+                    :class="preferencesTab === 'access' ? 'border-b-2 border-cyan-400 text-cyan-300' : 'text-slate-400 hover:text-white'"
+                    class="px-4 py-2 text-sm font-medium"></button>
+          </div>
+          <div x-show="preferencesTab === 'access'">
+            <div class="mb-6 flex items-center justify-between">
+              <div><p class="text-sm font-medium text-cyan-400" data-i18n="users.overline">ACCESS MANAGEMENT</p><h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="users.title">ForgeOS users</h2></div>
+              <button @click="openUserForm()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="users.new">New User</button>
+            </div>
+            <form x-show="showUserForm" @submit.prevent="saveUser()" class="mb-5 grid gap-4 rounded-2xl border border-cyan-400/20 bg-slate-900/75 p-5 md:grid-cols-2">
+              <input x-model="userForm.username" :disabled="Boolean(userForm.id)" required placeholder="Username" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white disabled:opacity-60">
+              <input x-model="userForm.password" type="password" :required="!userForm.id" placeholder="Password (10+ characters)" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white">
+              <select x-model="userForm.role" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white"><option value="VIEW">VIEW</option><option value="ADMIN">ADMIN</option></select>
+              <label class="flex items-center gap-2 text-sm text-slate-400"><input x-model="userForm.is_active" type="checkbox"> Active account</label>
+              <div class="flex justify-end gap-2 md:col-span-2"><button type="button" @click="showUserForm = false" class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancel</button><button class="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950">Save User</button></div>
+            </form>
+            <input x-model="userSearch" type="search" placeholder="Search users..." class="mb-4 w-full max-w-sm rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white">
+            <div class="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60">
+              <template x-for="user in filteredUsers" :key="user.id"><div class="flex items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4"><div><span class="font-medium text-white" x-text="user.username"></span><p class="mt-1 text-xs" :class="user.is_active ? 'text-emerald-300' : 'text-slate-600'" x-text="user.is_active ? 'Active' : 'Inactive'"></p></div><div class="flex items-center gap-2"><span class="rounded-full bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-300" x-text="user.role"></span><button @click="editUser(user)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs text-amber-300">Edit</button><button x-show="user.id !== currentUser?.id" @click="deleteUser(user)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs text-rose-300">Delete</button></div></div></template>
+            </div>
           </div>
         </section>
 
@@ -470,16 +478,51 @@
             </div>
           </div>
         </section>
-        <section x-show="page === 'reports'" x-cloak x-transition.opacity>
-          <div class="mb-6">
-            <p class="text-sm font-medium text-cyan-400">REPORTS</p>
-            <h2 class="mt-1 text-2xl font-semibold text-white">System snapshots and reports</h2>
+        <section x-show="page === 'reports'" x-cloak x-transition.opacity id="reports">
+          <div class="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <p class="text-sm font-medium text-cyan-400" data-i18n="reports.overline">EXPORT HISTORY</p>
+              <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="reports.title">Export History</h2>
+            </div>
+            <div class="flex gap-3">
+              <button @click="exportExcel()" class="rounded-xl bg-emerald-400/10 px-4 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-400/20" data-i18n="reports.export_excel">Export Excel</button>
+              <button @click="exportPdf()" class="rounded-xl bg-cyan-400/10 px-4 py-2.5 text-sm font-medium text-cyan-300 transition hover:bg-cyan-400/20" data-i18n="reports.export_pdf">Export PDF</button>
+            </div>
           </div>
-          <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-6 backdrop-blur-md">
-            <p class="text-slate-400">No reports section content configured yet.</p>
+          <div x-show="exportHistoryLoading" class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-6 backdrop-blur-md">
+            <p class="text-sm text-slate-400" data-i18n="reports.loading">Loading export history…</p>
+          </div>
+          <div x-show="exportHistoryError" class="rounded-2xl border border-rose-400/20 bg-rose-400/5 p-4 backdrop-blur-md">
+            <p class="text-sm text-rose-300" data-i18n="reports.error">Failed to load export history.</p>
+          </div>
+          <div x-show="!exportHistoryLoading && !exportHistoryError && exportHistory.length === 0" class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-6 backdrop-blur-md">
+            <p class="text-sm text-slate-400" data-i18n="reports.empty">No exports recorded yet.</p>
+          </div>
+          <div x-show="!exportHistoryLoading && !exportHistoryError && exportHistory.length > 0" class="rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-md overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-slate-800/70 bg-slate-950/50">
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500" data-i18n="reports.type">Type</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500" data-i18n="reports.date">Date</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500" data-i18n="reports.user">User</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="entry in exportHistory" :key="entry.id">
+                  <tr class="border-b border-slate-800/40 last:border-b-0">
+                    <td class="px-4 py-3 text-slate-300" x-text="entry.export_type === 'excel' ? 'Excel' : 'PDF'"></td>
+                    <td class="px-4 py-3 text-slate-400" x-text="new Date(entry.created_at).toLocaleString()"></td>
+                    <td class="px-4 py-3 text-slate-300" x-text="entry.username"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
           </div>
         </section>
       </main>
+      <footer class="border-t border-slate-800/70 px-4 py-4 text-center text-xs text-slate-600 sm:px-6 lg:px-8">
+        Created with Love and Joy by 313ON
+      </footer>
     </div>
   </div>
 
@@ -542,7 +585,7 @@
     function forgeApp() {
       const icon = (path) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${path}</svg>`;
       return {
-        page: "dashboard", loading: true, saving: false, assetModal: false, authenticated: Boolean(localStorage.getItem("forgeos-token")),
+        page: "dashboard", preferencesTab: "access", loading: true, saving: false, assetModal: false, authenticated: Boolean(localStorage.getItem("forgeos-token")),
         currentUser: null, loginForm: { username: "", password: "" },
         language: localStorage.getItem("forgeos-language") || "en", dictionary: {},
         dragging: false, selectedFile: null, uploading: false, uploadProgress: 0, importResult: null,
@@ -552,15 +595,16 @@
         showUserForm: false, userForm: { id: null, username: "", password: "", role: "VIEW", is_active: true },
         summary: { counts: { assets: 0, people: 0, active_assignments: 0, system_snapshots: 0 }, warnings: { expiring_warranties: [], missing_serial: [], unassigned_assets: [] }, warning_count: 0, recent_activity: [] },
         invoiceFile: null,
+        exportHistory: [], exportHistoryLoading: false, exportHistoryError: false,
         newAsset: { asset_tag: "", type: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" },
-        navigation: [
+navigation: [
           { id: "dashboard", label: "Dashboard", labelKey: "nav.dashboard", icon: icon('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>') },
           { id: "assets", label: "Assets", labelKey: "nav.assets", icon: icon('<path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4"/>') },
           { id: "people", label: "People", labelKey: "nav.people", icon: icon('<circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M16 4.5a4 4 0 0 1 0 7.5M18 15a6 6 0 0 1 3.5 6"/>') },
-          { id: "users", label: "Users", labelKey: "nav.users", adminOnly: true, icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') },
-          { id: "reports", label: "Reports", labelKey: "nav.reports", icon: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>') },
           { id: "import", label: "Import", labelKey: "nav.import", icon: icon('<path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>') },
-          { id: "monitoring", label: "Monitoring", labelKey: "nav.monitoring", icon: icon('<path d="M4 18V6m5 12V9m5 9V4m5 14v-7"/>') }
+          { id: "monitoring", label: "Monitoring", labelKey: "nav.monitoring", icon: icon('<path d="M4 18V6m5 12V9m5 9V4m5 14v-7"/>') },
+          { id: "preferences", label: "Preferences", labelKey: "nav.preferences", adminOnly: true, icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') },
+          { id: "reports", label: "Reports", labelKey: "nav.reports", icon: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>') }
         ],
         parsedFields: [
           { key: "hostname", label: "Hostname" }, { key: "os_name", label: "Operating System" },
@@ -579,21 +623,25 @@
           { key: "status", label: "Status", required: true }, { key: "notes", label: "Notes", wide: true, textarea: true }
         ],
         async init() {
-          window.addEventListener("forge:language", (event) => {
-            this.language = event.detail.language;
-            this.dictionary = event.detail.dictionary || {};
-          });
-          window.addEventListener("forge:auth-expired", () => {
-            this.logout();
-            this.toast(this.translated("auth.session_expired", "Your session expired. Please log in again."), "error");
-          });
-          if (window.forgeI18n) await window.forgeI18n.setLanguage(this.language);
-          if (this.authenticated) {
-            try { this.currentUser = await this.api("/api/v1/auth/me"); } catch (_) { this.logout(); }
-            if (this.authenticated) await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets(), this.loadUsers()]);
-          }
-          this.loading = false;
-        },
+ const hash = window.location.hash.replace("#", "");
+            if (hash && this.navigation.some(n => n.id === hash)) { this.page = hash; }
+            else if (hash === "users") { this.page = "preferences"; this.preferencesTab = "access"; }
+            else if (window.location.pathname === "/preferences") { this.page = "preferences"; this.preferencesTab = "access"; }
+           window.addEventListener("forge:language", (event) => {
+             this.language = event.detail.language;
+             this.dictionary = event.detail.dictionary || {};
+           });
+           window.addEventListener("forge:auth-expired", () => {
+             this.logout();
+             this.toast(this.translated("auth.session_expired", "Your session expired. Please log in again."), "error");
+           });
+           if (window.forgeI18n) await window.forgeI18n.setLanguage(this.language);
+           if (this.authenticated) {
+             try { this.currentUser = await this.api("/api/v1/auth/me"); } catch (_) { this.logout(); }
+              if (this.authenticated) await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets(), this.loadUsers(), this.loadExportHistory()]);
+           }
+           this.loading = false;
+         },
         get isAdmin() { return String(this.currentUser?.role || "").toUpperCase() === "ADMIN"; },
         get monitoringSummary() {
           return [
@@ -626,7 +674,7 @@
             { label: this.translated("dashboard.total_assets", "Total Assets"), value: c.assets, caption: this.translated("dashboard.across_locations", "Across all locations"), page: "assets", glow: "shadow-cyan", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[1].icon },
             { label: this.translated("dashboard.people", "People"), value: c.people, caption: this.translated("dashboard.registered_custodians", "Registered custodians"), page: "people", glow: "", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: this.navigation[2].icon },
             { label: this.translated("dashboard.assigned", "Assigned"), value: c.active_assignments, caption: this.translated("dashboard.active_assignments", "Active assignments"), page: "assets", glow: "shadow-emerald", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: icon('<path d="m5 12 4 4L19 6"/>') },
-            { label: this.translated("dashboard.snapshots", "Snapshots"), value: c.system_snapshots, caption: this.translated("dashboard.imported_reports", "Imported reports"), page: "reports", glow: "", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[4].icon }
+            { label: this.translated("dashboard.snapshots", "Snapshots"), value: c.system_snapshots, caption: this.translated("dashboard.imported_reports", "Imported reports"), page: "reports", glow: "", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[6].icon }
           ];
         },
         get warningGroups() {
@@ -638,15 +686,20 @@
           ];
         },
         navigate(page) {
-          this.page = page;
-          if (page === "monitoring") {
-            this.refreshMonitoring();
-            this.startMonitoringPolling();
-          } else {
-            this.stopMonitoringPolling();
-          }
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        },
+           if (page === "users") { this.page = "preferences"; this.preferencesTab = "access"; return; }
+           this.page = page;
+           if (page === "monitoring") {
+             this.refreshMonitoring();
+             this.startMonitoringPolling();
+           } else {
+             this.stopMonitoringPolling();
+           }
+           this.$nextTick(() => {
+             const el = document.getElementById(page);
+             if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); }
+             else { window.scrollTo({ top: 0, behavior: "smooth" }); }
+           });
+         },
         async api(url, options = {}) {
           return window.forgeApi.request(url, options);
         },
@@ -664,8 +717,9 @@
         async loadSummary() { try { this.summary = await this.api("/api/v1/dashboard/summary"); this.lastUpdated = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch (error) { this.toast(error.message, "error"); } },
         async loadAssets() { try { this.assets = await this.api("/api/v1/assets"); } catch (error) { this.toast(error.message, "error"); } },
         async loadPeople() { try { this.people = await this.api("/api/v1/people"); } catch (error) { this.toast(error.message, "error"); } },
-        async loadUsers() { if (this.isAdmin) try { this.users = await this.api("/api/v1/users"); } catch (error) { this.toast(error.message, "error"); } },
-        async loadTargets() { try { this.targets = await this.api("/api/v1/monitoring/targets"); } catch (error) { this.toast(error.message, "error"); } },
+         async loadUsers() { if (this.isAdmin) try { this.users = await this.api("/api/v1/users"); } catch (error) { this.toast(error.message, "error"); } },
+         async loadTargets() { try { this.targets = await this.api("/api/v1/monitoring/targets"); } catch (error) { this.toast(error.message, "error"); } },
+         async loadExportHistory() { this.exportHistoryLoading = true; this.exportHistoryError = false; try { this.exportHistory = await this.api("/api/v1/export/history"); } catch (_) { this.exportHistoryError = true; } finally { this.exportHistoryLoading = false; } },
         async refreshCurrent() { this.loading = true; await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets()]); this.loading = false; this.toast("Workspace refreshed"); },
         async refreshMonitoring(showToast = false) {
           this.monitoringLoading = true; this.monitoringError = "";

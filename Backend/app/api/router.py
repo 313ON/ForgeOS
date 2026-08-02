@@ -12,9 +12,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..domain.models import Asset, Assignment, MonitoredTarget, NetworkLog, Person, SystemSnapshot, User, Warranty
+from ..domain.models import Asset, Assignment, ExportLog, MonitoredTarget, NetworkLog, Person, SystemSnapshot, User, Warranty
 from ..domain.schemas import (
-    AssetCreate, AssetRead, AssetUpdate, AssignmentCreate, AssignmentRead, IngestResponse,
+    AssetCreate, AssetRead, AssetUpdate, AssignmentCreate, AssignmentRead, ExportLogOut, IngestResponse,
     NetworkLogOut, PersonCreate, PersonRead, PersonUpdate, LoginRequest, UserCreate, UserRead, UserUpdate,
 )
 from ..services.ai_agent import query_asset_insights
@@ -346,15 +346,27 @@ def get_invoice(asset_id: int, db: Session = Depends(get_db), _: AuthenticatedUs
 
 
 @compat_router.get("/export/excel")
-def export_excel(lang: str = Query("en", pattern="^(en|fa)$"), db: Session = Depends(get_db), _: AuthenticatedUser = Depends(get_current_user)) -> StreamingResponse:
+def export_excel(lang: str = Query("en", pattern="^(en|fa)$"), db: Session = Depends(get_db), user: AuthenticatedUser = Depends(get_current_user)) -> StreamingResponse:
     """Download an Excel asset export."""
-    return StreamingResponse(create_excel_report(asset_report_rows(db), lang), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    report = create_excel_report(asset_report_rows(db), lang)
+    db.add(ExportLog(export_type="excel", user_id=user.id, username=user.username))
+    db.commit()
+    return StreamingResponse(report, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 @compat_router.get("/export/pdf")
-def export_pdf(lang: str = Query("en", pattern="^(en|fa)$"), db: Session = Depends(get_db), _: AuthenticatedUser = Depends(get_current_user)) -> StreamingResponse:
+def export_pdf(lang: str = Query("en", pattern="^(en|fa)$"), db: Session = Depends(get_db), user: AuthenticatedUser = Depends(get_current_user)) -> StreamingResponse:
     """Download a PDF asset export."""
-    return StreamingResponse(create_pdf_report(asset_report_rows(db), lang), media_type="application/pdf")
+    report = create_pdf_report(asset_report_rows(db), lang)
+    db.add(ExportLog(export_type="pdf", user_id=user.id, username=user.username))
+    db.commit()
+    return StreamingResponse(report, media_type="application/pdf")
+
+
+@router.get("/export/history", response_model=list[ExportLogOut])
+def export_history(db: Session = Depends(get_db), _: AuthenticatedUser = Depends(get_current_user)) -> list[ExportLog]:
+    """Return export history, newest first."""
+    return list(db.scalars(select(ExportLog).order_by(ExportLog.created_at.desc())).all())
 
 
 @compat_router.get("/export/json")

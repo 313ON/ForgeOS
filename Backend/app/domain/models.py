@@ -190,3 +190,15 @@ class NetworkLog(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     target: Mapped[MonitoredTarget] = relationship(back_populates="logs")
+
+
+class ExportLog(Base):
+    """Record of a successful asset export."""
+
+    __tablename__ = "export_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    export_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    username: Mapped[str] = mapped_column(String(100), nullable=False)

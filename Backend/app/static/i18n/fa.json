@@ -11,6 +11,10 @@
   "nav.people": "افراد",
   "nav.import": "درون‌ریزی",
   "nav.monitoring": "پایش",
+  "nav.preferences": "تنظیمات",
+  "preferences.overline": "تنظیمات",
+  "preferences.title": "تنظیمات",
+  "preferences.tab.access": "مدیریت دسترسی",
   "nav.reports": "گزارش‌ها",
   "nav.users": "کاربران",
   "users.overline": "مدیریت دسترسی",
@@ -128,5 +132,15 @@
   "targets.create": "افزودن هدف",
   "targets.update": "به‌روزرسانی هدف",
   "targets.delete": "حذف هدف",
-  "targets.logs": "گزارش‌های شبکه"
+  "targets.logs": "گزارش‌های شبکه",
+  "reports.overline": "تاریخچه خروجی‌ها",
+  "reports.title": "تاریخچه خروجی‌ها",
+  "reports.export_excel": "خروجی Excel",
+  "reports.export_pdf": "خروجی PDF",
+  "reports.loading": "در حال بارگیری تاریخچه خروجی‌ها…",
+  "reports.empty": "هنوز خروجی‌ای ثبت نشده است.",
+  "reports.error": "بارگیری تاریخچه خروجی‌ها نشکل آفرید.",
+  "reports.type": "نوع",
+  "reports.date": "تاریخ",
+  "reports.user": "کاربر"
 }

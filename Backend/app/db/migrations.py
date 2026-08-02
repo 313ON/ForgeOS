@@ -259,3 +259,28 @@ def repair_network_logs_fk(db_path: str):
         raise
     finally:
         conn.close()
+
+
+def migrate_export_log_table(engine: Engine) -> list[str]:
+    """Create the export_logs table if it does not exist (idempotent)."""
+    added: list[str] = []
+    inspector = inspect(engine)
+    if "export_logs" in inspector.get_table_names():
+        return added
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE export_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    export_type VARCHAR(10) NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    user_id INTEGER NOT NULL,
+                    username VARCHAR(100) NOT NULL,
+                    FOREIGN KEY(user_id) REFERENCES users(id)
+                )
+                """
+            )
+        )
+        added.append("export_logs")
+    return added

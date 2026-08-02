@@ -251,3 +251,12 @@ class NetworkLogOut(ORMModel):
     message: str | None = None
     response_status_code: int | None = None
     timestamp: datetime
+
+
+class ExportLogOut(ORMModel):
+    """A safe export log entry response."""
+
+    id: int
+    export_type: str
+    created_at: datetime
+    username: str

@@ -11,6 +11,10 @@
   "nav.people": "People",
   "nav.import": "Import",
   "nav.monitoring": "Monitoring",
+  "nav.preferences": "Preferences",
+  "preferences.overline": "PREFERENCES",
+  "preferences.title": "Preferences",
+  "preferences.tab.access": "Access Management",
   "nav.reports": "Reports",
   "nav.users": "Users",
   "users.overline": "ACCESS MANAGEMENT",
@@ -128,5 +132,15 @@
   "targets.create": "Add Target",
   "targets.update": "Update Target",
   "targets.delete": "Delete Target",
-  "targets.logs": "Network Logs"
+  "targets.logs": "Network Logs",
+  "reports.overline": "EXPORT HISTORY",
+  "reports.title": "Export History",
+  "reports.export_excel": "Export Excel",
+  "reports.export_pdf": "Export PDF",
+  "reports.loading": "Loading export history…",
+  "reports.empty": "No exports recorded yet.",
+  "reports.error": "Failed to load export history.",
+  "reports.type": "Type",
+  "reports.date": "Date",
+  "reports.user": "User"
 }
