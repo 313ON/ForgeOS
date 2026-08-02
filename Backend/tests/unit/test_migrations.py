@@ -1,25 +1,42 @@
-import sqlite3
 import pytest
-from Backend.app.db.migrations import repair_network_logs_fk
+from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.pool import StaticPool
+from Backend.app.db.migrations import _repair_dangling_network_logs_fk
 
-def test_repair_network_logs_fk_dangling_reference(tmp_path):
-    db_file = tmp_path / "test_forgeos.db"
-    conn = sqlite3.connect(db_file)
-    conn.executescript("""
-        CREATE TABLE monitored_targets (id INTEGER PRIMARY KEY);
-        CREATE TABLE network_logs (
-            id INTEGER PRIMARY KEY, 
-            target_id INTEGER, 
-            FOREIGN KEY(target_id) REFERENCES monitored_targets_legacy(id)
-        );
-        INSERT INTO network_logs (id, target_id) VALUES (1, 100);
-    """)
-    conn.commit()
-    conn.close()
+def test_repair_dangling_network_logs_fk():
+    engine = create_engine("sqlite:///:memory:", poolclass=StaticPool)
+    with engine.begin() as conn:
+        conn.exec_driver_sql("CREATE TABLE monitored_targets (id INTEGER PRIMARY KEY)")
+        conn.exec_driver_sql("""
+CREATE TABLE network_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    target_id INTEGER NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(target_id) REFERENCES monitored_targets_legacy(id) ON DELETE CASCADE
+)
+""")
+        conn.exec_driver_sql("INSERT INTO network_logs (target_id) VALUES (1)")
 
-    repair_network_logs_fk(str(db_file))
+    # Assert broken FK
+    inspector = inspect(engine)
+    fks = inspector.get_foreign_keys("network_logs")
+    assert fks[0]["referred_table"] == "monitored_targets_legacy"
 
-    conn = sqlite3.connect(db_file)
-    fk_list = conn.execute("PRAGMA foreign_key_list(network_logs)").fetchall()
-    assert any(fk[2] == 'monitored_targets' for fk in fk_list)
-    conn.close()
+    # Execute repair
+    res = _repair_dangling_network_logs_fk(engine)
+    assert res == ["network_logs.foreign_key_repaired"]
+
+    # Assert repaired FK
+    inspector = inspect(engine)
+    fks = inspector.get_foreign_keys("network_logs")
+    assert fks[0]["referred_table"] == "monitored_targets"
+
+    # Assert data preserved
+    with engine.connect() as conn:
+        rows = conn.exec_driver_sql("SELECT target_id FROM network_logs").fetchall()
+        assert len(rows) == 1
+        assert rows[0][0] == 1
+
+    # Assert idempotency
+    res_second = _repair_dangling_network_logs_fk(engine)
+    assert res_second == []

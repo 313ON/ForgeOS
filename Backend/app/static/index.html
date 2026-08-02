@@ -146,7 +146,7 @@
 
           <div x-show="!loading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <template x-for="card in kpiCards" :key="card.label">
-              <a :href="card.href" class="card-glossy relative block overflow-hidden rounded-2xl p-5"
+              <a @click.prevent="navigate(card.page)" href="#" class="card-glossy relative block overflow-hidden rounded-2xl p-5"
                    :class="card.glow">
                 <div class="absolute -right-10 -top-10 h-28 w-28 rounded-full blur-3xl" :class="card.orb"></div>
                 <div class="relative flex items-start justify-between">
@@ -470,6 +470,15 @@
             </div>
           </div>
         </section>
+        <section x-show="page === 'reports'" x-cloak x-transition.opacity>
+          <div class="mb-6">
+            <p class="text-sm font-medium text-cyan-400">REPORTS</p>
+            <h2 class="mt-1 text-2xl font-semibold text-white">System snapshots and reports</h2>
+          </div>
+          <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-6 backdrop-blur-md">
+            <p class="text-slate-400">No reports section content configured yet.</p>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -549,6 +558,7 @@
           { id: "assets", label: "Assets", labelKey: "nav.assets", icon: icon('<path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4"/>') },
           { id: "people", label: "People", labelKey: "nav.people", icon: icon('<circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M16 4.5a4 4 0 0 1 0 7.5M18 15a6 6 0 0 1 3.5 6"/>') },
           { id: "users", label: "Users", labelKey: "nav.users", adminOnly: true, icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') },
+          { id: "reports", label: "Reports", labelKey: "nav.reports", icon: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>') },
           { id: "import", label: "Import", labelKey: "nav.import", icon: icon('<path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>') },
           { id: "monitoring", label: "Monitoring", labelKey: "nav.monitoring", icon: icon('<path d="M4 18V6m5 12V9m5 9V4m5 14v-7"/>') }
         ],
@@ -613,10 +623,10 @@
         get kpiCards() {
           const c = this.summary.counts;
           return [
-            { label: this.translated("dashboard.total_assets", "Total Assets"), value: c.assets, caption: this.translated("dashboard.across_locations", "Across all locations"), href: "/assets", glow: "shadow-cyan", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[1].icon },
-            { label: this.translated("dashboard.people", "People"), value: c.people, caption: this.translated("dashboard.registered_custodians", "Registered custodians"), href: "/people", glow: "", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: this.navigation[2].icon },
-            { label: this.translated("dashboard.assigned", "Assigned"), value: c.active_assignments, caption: this.translated("dashboard.active_assignments", "Active assignments"), href: "/assets?status=assigned", glow: "shadow-emerald", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: icon('<path d="m5 12 4 4L19 6"/>') },
-            { label: this.translated("dashboard.snapshots", "Snapshots"), value: c.system_snapshots, caption: this.translated("dashboard.imported_reports", "Imported reports"), href: "/history", glow: "", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[3].icon }
+            { label: this.translated("dashboard.total_assets", "Total Assets"), value: c.assets, caption: this.translated("dashboard.across_locations", "Across all locations"), page: "assets", glow: "shadow-cyan", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[1].icon },
+            { label: this.translated("dashboard.people", "People"), value: c.people, caption: this.translated("dashboard.registered_custodians", "Registered custodians"), page: "people", glow: "", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: this.navigation[2].icon },
+            { label: this.translated("dashboard.assigned", "Assigned"), value: c.active_assignments, caption: this.translated("dashboard.active_assignments", "Active assignments"), page: "assets", glow: "shadow-emerald", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: icon('<path d="m5 12 4 4L19 6"/>') },
+            { label: this.translated("dashboard.snapshots", "Snapshots"), value: c.system_snapshots, caption: this.translated("dashboard.imported_reports", "Imported reports"), page: "reports", glow: "", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[4].icon }
           ];
         },
         get warningGroups() {

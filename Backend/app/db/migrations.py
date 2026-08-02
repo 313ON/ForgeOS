@@ -75,6 +75,11 @@ def migrate_asset_columns(engine: Engine) -> list[str]:
                 )
         inspector = inspect(engine)
     added.extend(_migrate_legacy_target_status_constraint(engine))
+    added.extend(_repair_dangling_network_logs_fk(engine))
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE assets SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL")
+        )
     return added
 
 
@@ -147,6 +152,70 @@ def _migrate_legacy_target_status_constraint(engine: Engine) -> list[str]:
         )
         connection.execute(text("PRAGMA foreign_keys=ON"))
     return ["monitored_targets.status_constraint"]
+
+
+def _repair_dangling_network_logs_fk(engine: Engine) -> list[str]:
+    """Re-point network_logs to monitored_targets when its FK is dangling.
+
+    The legacy monitored_targets rebuild renames the original table to
+    monitored_targets_legacy before recreating monitored_targets; if
+    network_logs still references that dropped table, its foreign key is
+    dangling. This rebuild is idempotent and only runs when a foreign key
+    references monitored_targets_legacy, so it is safe to call on startup.
+    """
+    inspector = inspect(engine)
+    table_names = set(inspector.get_table_names())
+    if "network_logs" not in table_names:
+        return []
+    dangling = any(
+        fk.get("referred_table") == "monitored_targets_legacy"
+        for fk in inspector.get_foreign_keys("network_logs")
+    )
+    if not dangling:
+        return []
+    connection = engine.raw_connection()
+    try:
+        connection.execute("PRAGMA foreign_keys=OFF")
+        connection.execute("PRAGMA legacy_alter_table=ON")
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA table_info(network_logs)")
+        column_list = ", ".join(row[1] for row in cursor.fetchall())
+        cursor.execute("ALTER TABLE network_logs RENAME TO network_logs_legacy")
+        cursor.execute(
+            """
+            CREATE TABLE network_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                target_id INTEGER NOT NULL,
+                latency_ms FLOAT,
+                status_code INTEGER,
+                timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                check_type VARCHAR(30) NOT NULL DEFAULT 'network',
+                status VARCHAR(20) NOT NULL DEFAULT 'UNKNOWN',
+                message TEXT,
+                response_status_code INTEGER,
+                FOREIGN KEY(target_id) REFERENCES monitored_targets(id) ON DELETE CASCADE
+            )
+            """
+        )
+        cursor.execute(
+            f"INSERT INTO network_logs ({column_list}) SELECT {column_list} FROM network_logs_legacy"
+        )
+        cursor.execute("DROP TABLE network_logs_legacy")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS ix_network_logs_timestamp ON network_logs(timestamp)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS ix_network_logs_target_timestamp ON network_logs(target_id, timestamp)"
+        )
+        connection.commit()
+        return ["network_logs.foreign_key_repaired"]
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.execute("PRAGMA legacy_alter_table=OFF")
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.close()
 
 
 def repair_network_logs_fk(db_path: str):

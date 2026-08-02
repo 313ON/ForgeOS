@@ -53,6 +53,7 @@ def dashboard() -> FileResponse:
 @app.get("/people", include_in_schema=False)
 @app.get("/assets", include_in_schema=False)
 @app.get("/history", include_in_schema=False)
+@app.get("/reports", include_in_schema=False)
 @app.get("/monitoring", include_in_schema=False)
 def dashboard_section() -> FileResponse:
     """Serve the SPA shell for dashboard deep links."""
