@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -27,13 +27,16 @@ class AssetSummary(ORMModel):
     id: int
     asset_tag: str
     type: str
-    status: str
+    status: str | None = None
     location: str | None = None
 
 
 class AssetBase(BaseModel):
     asset_tag: str | None = Field(default=None, max_length=100)
     type: str = Field(min_length=1, max_length=100)
+    asset_name: str | None = None
+    category: str | None = None
+    internal_inventory_number: str | None = None
     brand: str | None = None
     manufacturer: str | None = None
     model: str | None = None
@@ -47,11 +50,22 @@ class AssetBase(BaseModel):
     hostname: str | None = None
     ip_address: str | None = None
     location: str | None = None
+    building: str | None = None
+    room: str | None = None
+    desk: str | None = None
+    rack: str | None = None
+    rack_unit: str | None = None
     org_unit: str | None = None
-    status: str = "active"
+    status: str | None = None
+    vendor_name: str | None = None
+    currency: str | None = None
+    invoice_number: str | None = None
     purchase_date: date | None = None
     purchase_price: float | None = Field(default=None, ge=0)
+    warranty_expiration_date: date | None = None
+    support_expiration_date: date | None = None
     invoice_path: str | None = None
+    specifications: dict[str, Any] | None = None
     notes: str | None = None
 
 
@@ -66,6 +80,9 @@ class AssetUpdate(BaseModel):
 
     asset_tag: str | None = Field(default=None, min_length=1, max_length=100)
     type: str | None = Field(default=None, min_length=1, max_length=100)
+    asset_name: str | None = None
+    category: str | None = None
+    internal_inventory_number: str | None = None
     brand: str | None = None
     manufacturer: str | None = None
     model: str | None = None
@@ -79,11 +96,22 @@ class AssetUpdate(BaseModel):
     hostname: str | None = None
     ip_address: str | None = None
     location: str | None = None
+    building: str | None = None
+    room: str | None = None
+    desk: str | None = None
+    rack: str | None = None
+    rack_unit: str | None = None
     org_unit: str | None = None
     status: str | None = None
+    vendor_name: str | None = None
+    currency: str | None = None
+    invoice_number: str | None = None
     purchase_date: date | None = None
     purchase_price: float | None = Field(default=None, ge=0)
+    warranty_expiration_date: date | None = None
+    support_expiration_date: date | None = None
     invoice_path: str | None = None
+    specifications: dict[str, Any] | None = None
     notes: str | None = None
 
 
@@ -176,6 +204,33 @@ class IngestResponse(BaseModel):
     parsed: dict[str, object]
     suggested_profile: str
     asset_draft: dict[str, object] | None = None
+
+
+class ExtractCandidate(BaseModel):
+    """A single field proposed by a report extraction provider."""
+
+    key: str
+    label: str
+    value: str | int | float | None = None
+    confidence: Literal["high", "medium", "low"]
+    target: Literal["asset", "spec"] = "asset"
+    source: str
+
+
+class ExtractProvider(BaseModel):
+    """Metadata for a report extraction provider."""
+
+    id: str
+    name: str
+    sourceType: Literal["windows", "linux"]
+    retentionPolicy: str
+
+
+class ExtractResponse(BaseModel):
+    """Field candidates extracted from a user-supplied report."""
+
+    provider: ExtractProvider
+    candidates: list[ExtractCandidate]
 
 
 class TargetCreate(BaseModel):

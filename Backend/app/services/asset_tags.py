@@ -15,6 +15,14 @@ DEFAULT_PREFIXES: Mapping[str, str] = {
     "desktop": "DSK",
     "server": "SRV",
     "printer": "PRT",
+    "monitor": "MON",
+    "mobile": "MOB",
+    "peripheral": "PER",
+    "network": "NET",
+    "firewall": "FWL",
+    "access point": "APT",
+    "tablet": "MOB",
+    "phone": "MOB",
 }
 TAG_PATTERN = re.compile(r"^[A-Z][A-Z0-9]{1,9}-\d{4,}$")
 

@@ -14,12 +14,14 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..domain.models import Asset, Assignment, ExportLog, MonitoredTarget, NetworkLog, Person, SystemSnapshot, User, Warranty
 from ..domain.schemas import (
-    AssetCreate, AssetRead, AssetUpdate, AssignmentCreate, AssignmentRead, ExportLogOut, IngestResponse,
-    NetworkLogOut, PersonCreate, PersonRead, PersonUpdate, LoginRequest, UserCreate, UserRead, UserUpdate,
+    AssetCreate, AssetRead, AssetUpdate, AssignmentCreate, AssignmentRead, ExportLogOut, ExtractResponse,
+    IngestResponse, NetworkLogOut, PersonCreate, PersonRead, PersonUpdate, LoginRequest, UserCreate, UserRead,
+    UserUpdate,
 )
 from ..services.ai_agent import query_asset_insights
 from ..services.auth import AuthenticatedUser, UserRole, create_access_token, get_current_user, hash_password, require_admin, verify_password
 from ..services.asset_tags import generate_asset_tag, validate_manual_tag
+from ..services.extraction import extract_fields
 from ..services.ingestion import decode_report, detect_source, parse_report, suggest_hardware_profile
 from ..services.monitoring import check_target, json_metadata, now_utc
 from ..services.reports import asset_report_rows, create_excel_report, create_pdf_report
@@ -171,13 +173,86 @@ def list_assets(
 def create_asset(payload: AssetCreate, db: Session = Depends(get_db), _: AuthenticatedUser = Depends(require_admin)) -> dict[str, Any]:
     """Create an asset, generating a tag when omitted."""
     values = payload.model_dump()
+    values["type"] = (values.get("type") or "").strip()
+    if not values["type"]:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "type is required")
+    values["status"] = (values.get("status") or "").strip() or None
+    specifications = values.pop("specifications", None)
+    values["specifications"] = json.dumps(specifications, ensure_ascii=False) if specifications else None
     tag = values.pop("asset_tag", None)
-    values["asset_tag"] = generate_asset_tag(db, values["type"]) if not tag else validate_manual_tag(tag)
+    if tag:
+        try:
+            values["asset_tag"] = validate_manual_tag(tag)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    else:
+        values["asset_tag"] = generate_asset_tag(db, values["type"])
     asset = Asset(**values)
     db.add(asset)
     _commit_or_conflict(db, "Asset tag already exists")
     db.refresh(asset)
     return _asset_payload(db, asset)
+
+
+@router.get("/assets/tag-suggestion")
+def asset_tag_suggestion(
+    type: str = Query(min_length=1, max_length=100),
+    db: Session = Depends(get_db),
+    _: AuthenticatedUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Suggest the next sequential tag for a type without persisting anything."""
+    asset_type = (type or "").strip()
+    if not asset_type:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "type is required")
+    try:
+        return {"asset_tag": generate_asset_tag(db, asset_type)}
+    finally:
+        db.rollback()
+
+
+@router.get("/assets/tag-valid")
+def asset_tag_valid(
+    asset_tag: str = Query(min_length=1, max_length=100),
+    exclude_id: int | None = None,
+    db: Session = Depends(get_db),
+    _: AuthenticatedUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Validate an asset tag's format and uniqueness (excluding a given asset)."""
+    try:
+        normalized = validate_manual_tag(asset_tag)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    query = select(Asset.id).where(Asset.asset_tag == normalized)
+    if exclude_id is not None:
+        query = query.where(Asset.id != exclude_id)
+    return {"asset_tag": normalized, "valid": db.scalar(query) is None}
+
+
+@router.post("/spec-extract", response_model=ExtractResponse)
+async def spec_extract(
+    file: UploadFile | None = File(default=None),
+    text: str | None = Form(default=None),
+    db: Session = Depends(get_db),
+    _: AuthenticatedUser = Depends(get_current_user),
+) -> ExtractResponse:
+    """Extract candidate asset fields from a user-supplied report (upload or paste)."""
+    if file is not None:
+        if not (file.filename or "").casefold().endswith(".txt"):
+            raise HTTPException(415, "Only .txt reports are supported")
+        content = await file.read()
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(413, "Report exceeds the 5 MB upload limit")
+        raw = decode_report(content)
+        filename = file.filename or "report.txt"
+    elif text is not None and text.strip():
+        raw = text
+        filename = "report.txt"
+    else:
+        raise HTTPException(422, "Provide a report file or paste report text")
+    result = extract_fields(raw, filename)
+    if result is None:
+        raise HTTPException(422, "Unable to identify report format (DxDiag, systeminfo, or Linux text supported)")
+    return result
 
 
 @router.get("/assets/{asset_id}", response_model=AssetRead)
@@ -191,8 +266,17 @@ def update_asset(asset_id: int, payload: AssetUpdate, db: Session = Depends(get_
     """Apply a partial update without regenerating the asset tag."""
     asset = _get_or_404(db, Asset, asset_id, "Asset")
     for key, value in payload.model_dump(exclude_unset=True).items():
-        if key == "asset_tag" and value is not None:
-            value = validate_manual_tag(value)
+        if value is None and key in ("asset_tag", "type"):
+            continue
+        if key == "asset_tag":
+            try:
+                value = validate_manual_tag(value)
+            except ValueError as exc:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        if key == "status" and value is not None:
+            value = value.strip() or None
+        if key == "specifications":
+            value = json.dumps(value, ensure_ascii=False) if value else None
         setattr(asset, key, value)
     _commit_or_conflict(db, "Asset tag already exists")
     db.refresh(asset)
@@ -412,7 +496,14 @@ def _trim_history(db: Session, target_id: int, keep: int = 500) -> None:
 
 def _asset_payload(db: Session, asset: Asset) -> dict[str, Any]:
     assignment = db.scalar(select(Assignment).where(Assignment.asset_id == asset.id, active_assignment_filter()).order_by(Assignment.start_date.desc()))
-    return {**{column.name: getattr(asset, column.name) for column in Asset.__table__.columns}, "custodian": _person_summary(assignment.person) if assignment and assignment.person else None}
+    payload = {column.name: getattr(asset, column.name) for column in Asset.__table__.columns}
+    if payload.get("specifications"):
+        try:
+            payload["specifications"] = json.loads(payload["specifications"])
+        except (TypeError, ValueError):
+            payload["specifications"] = None
+    payload["custodian"] = _person_summary(assignment.person) if assignment and assignment.person else None
+    return payload
 
 
 def _person_payload(db: Session, person: Person) -> dict[str, Any]:

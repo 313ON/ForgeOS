@@ -32,6 +32,8 @@ def asset_report_rows(db: Session) -> list[dict[str, Any]]:
         {
             "asset_tag": asset.asset_tag,
             "type": asset.type,
+            "asset_name": asset.asset_name,
+            "category": asset.category,
             "manufacturer": asset.manufacturer or asset.brand,
             "model": asset.model,
             "ram_mb": asset.ram_mb,
@@ -43,8 +45,8 @@ def asset_report_rows(db: Session) -> list[dict[str, Any]]:
             "location": asset.location,
             "status": asset.status,
             "invoice_path": asset.invoice_path,
-            "vendor_name": None,
-            "invoice_number": None,
+            "vendor_name": asset.vendor_name,
+            "invoice_number": asset.invoice_number,
         }
         for asset in assets
     ]

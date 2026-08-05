@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
 from sqlalchemy import Engine, inspect, text
 
@@ -8,6 +9,9 @@ from sqlalchemy import Engine, inspect, text
 TABLE_MIGRATIONS: dict[str, dict[str, str]] = {
     "assets": {
         "manufacturer": "VARCHAR(100)",
+        "asset_name": "VARCHAR(255)",
+        "category": "VARCHAR(100)",
+        "internal_inventory_number": "VARCHAR(100)",
         "ram_mb": "INTEGER",
         "cpu_name": "VARCHAR(255)",
         "gpu_name": "VARCHAR(255)",
@@ -16,6 +20,17 @@ TABLE_MIGRATIONS: dict[str, dict[str, str]] = {
         "bios_version": "VARCHAR(255)",
         "purchase_date": "DATE",
         "purchase_price": "FLOAT",
+        "vendor_name": "VARCHAR(150)",
+        "currency": "VARCHAR(10)",
+        "invoice_number": "VARCHAR(100)",
+        "warranty_expiration_date": "DATE",
+        "support_expiration_date": "DATE",
+        "building": "VARCHAR(150)",
+        "room": "VARCHAR(150)",
+        "desk": "VARCHAR(150)",
+        "rack": "VARCHAR(100)",
+        "rack_unit": "VARCHAR(50)",
+        "specifications": "TEXT",
         "invoice_path": "VARCHAR(500)",
         "hostname": "VARCHAR(255)",
         "ip_address": "VARCHAR(255)",
@@ -76,6 +91,7 @@ def migrate_asset_columns(engine: Engine) -> list[str]:
         inspector = inspect(engine)
     added.extend(_migrate_legacy_target_status_constraint(engine))
     added.extend(_repair_dangling_network_logs_fk(engine))
+    added.extend(_make_asset_status_nullable(engine))
     with engine.begin() as connection:
         connection.execute(
             text("UPDATE assets SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL")
@@ -152,6 +168,66 @@ def _migrate_legacy_target_status_constraint(engine: Engine) -> list[str]:
         )
         connection.execute(text("PRAGMA foreign_keys=ON"))
     return ["monitored_targets.status_constraint"]
+
+
+def _make_asset_status_nullable(engine: Engine) -> list[str]:
+    """Drop the NOT NULL constraint on assets.status without touching row data.
+
+    SQLite cannot ALTER a column, so when the legacy column is declared NOT NULL
+    the table is rebuilt with the constraint removed. Existing status values are
+    preserved verbatim; rows with a NULL status are simply left alone.
+    """
+    inspector = inspect(engine)
+    if "assets" not in inspector.get_table_names():
+        return []
+    status_col = next(
+        (column for column in inspector.get_columns("assets") if column["name"] == "status"),
+        None,
+    )
+    if status_col is None or status_col.get("nullable", True):
+        return []
+
+    connection = engine.raw_connection()
+    try:
+        connection.execute("PRAGMA foreign_keys=OFF")
+        connection.execute("PRAGMA legacy_alter_table=ON")
+        cursor = connection.cursor()
+        columns = [row[1] for row in cursor.execute("PRAGMA table_info(assets)").fetchall()]
+        table_sql = cursor.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'assets'"
+        ).fetchone()[0]
+        rebuilt_sql = re.sub(r"(?i)(status\s+[^,]+?)\s+NOT\s+NULL\b", r"\1", table_sql, count=1)
+        if rebuilt_sql == table_sql:
+            raise RuntimeError("Could not rewrite assets.status column to be nullable")
+        index_defs = cursor.execute(
+            "SELECT name, sql FROM sqlite_master "
+            "WHERE type = 'index' AND tbl_name = 'assets' AND sql IS NOT NULL "
+            "AND name NOT LIKE 'sqlite_autoindex%'"
+        ).fetchall()
+        index_columns = {
+            name: [row[2] for row in cursor.execute(f"PRAGMA index_info('{name}')").fetchall()]
+            for name, _ in index_defs
+        }
+        column_list = ", ".join(columns)
+        cursor.execute("ALTER TABLE assets RENAME TO assets_legacy")
+        cursor.execute(rebuilt_sql)
+        cursor.execute(
+            f"INSERT INTO assets ({column_list}) SELECT {column_list} FROM assets_legacy"
+        )
+        cursor.execute("DROP TABLE assets_legacy")
+        new_columns = {row[1] for row in cursor.execute("PRAGMA table_info(assets)").fetchall()}
+        for name, sql in index_defs:
+            if all(column in new_columns for column in index_columns[name]):
+                cursor.execute(sql)
+        connection.commit()
+        return ["assets.status_nullable"]
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.execute("PRAGMA legacy_alter_table=OFF")
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.close()
 
 
 def _repair_dangling_network_logs_fk(engine: Engine) -> list[str]:

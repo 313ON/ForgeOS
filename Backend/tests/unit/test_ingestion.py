@@ -18,6 +18,9 @@ class IngestionParserTests(unittest.TestCase):
             set(parsed),
             {
                 "hostname",
+                "manufacturer",
+                "model",
+                "serial_number",
                 "os_name",
                 "os_version",
                 "cpu_name",
@@ -26,6 +29,7 @@ class IngestionParserTests(unittest.TestCase):
                 "ram_mb",
                 "gpu_name",
                 "bios_version",
+                "ip_address",
             },
         )
         self.assertTrue(all(value is None for value in parsed.values()))

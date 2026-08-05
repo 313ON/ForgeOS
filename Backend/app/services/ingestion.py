@@ -10,6 +10,9 @@ ParsedSystemInfo = dict[str, str | int | None]
 
 EMPTY_RESULT: ParsedSystemInfo = {
     "hostname": None,
+    "manufacturer": None,
+    "model": None,
+    "serial_number": None,
     "os_name": None,
     "os_version": None,
     "cpu_name": None,
@@ -18,6 +21,7 @@ EMPTY_RESULT: ParsedSystemInfo = {
     "ram_mb": None,
     "gpu_name": None,
     "bios_version": None,
+    "ip_address": None,
 }
 
 
@@ -61,6 +65,8 @@ def parse_dxdiag(text: str) -> ParsedSystemInfo:
     fields = _key_value_lines(text)
 
     result["hostname"] = _first(fields, "machine name")
+    result["manufacturer"] = _first(fields, "system manufacturer")
+    result["model"] = _first(fields, "system model")
     operating_system = _first(fields, "operating system")
     os_name, os_version = _split_windows_version(operating_system)
     result["os_name"] = os_name
@@ -88,6 +94,10 @@ def parse_systeminfo(text: str) -> ParsedSystemInfo:
     fields = _key_value_lines(text)
 
     result["hostname"] = _first(fields, "host name", "hostname")
+    result["manufacturer"] = _first(fields, "system manufacturer")
+    result["model"] = _first(fields, "system model")
+    result["serial_number"] = _first(fields, "system serial number")
+    result["ip_address"] = _first(fields, "ip address")
     result["os_name"] = _first(fields, "os name")
     result["os_version"] = _first(fields, "os version")
     result["bios_version"] = _first(fields, "bios version")
