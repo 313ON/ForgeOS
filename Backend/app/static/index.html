@@ -218,7 +218,7 @@
               <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="assets.title">Managed infrastructure</h2>
             </div>
             <div class="flex flex-wrap gap-3">
-              <button x-show="isAdmin" @click="assetModal = true" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110">
+              <button x-show="isAdmin" @click="openNewAsset()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110">
                 <span data-i18n="assets.new">+ New Asset</span>
               </button>
             </div>
@@ -234,7 +234,7 @@
             <div class="overflow-x-auto">
               <table class="w-full text-left text-sm">
                 <thead class="border-b border-slate-800/80 bg-slate-950/30 text-xs uppercase tracking-wider text-slate-500">
-                  <tr><th class="px-5 py-4">Asset</th><th class="px-5 py-4">Type</th><th class="px-5 py-4">Serial</th><th class="px-5 py-4">Purchase</th><th class="px-5 py-4">Location</th><th class="px-5 py-4">Status</th><th class="px-5 py-4">Invoice</th></tr>
+                  <tr><th class="px-5 py-4">Asset</th><th class="px-5 py-4">Type</th><th class="px-5 py-4">Serial</th><th class="px-5 py-4">Purchase</th><th class="px-5 py-4">Location</th><th class="px-5 py-4">Status</th><th class="px-5 py-4">Invoice</th><th class="px-5 py-4">Actions</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
                   <template x-for="asset in filteredAssets" :key="asset.id">
@@ -259,6 +259,12 @@
                         </button>
                         <span x-show="!asset.invoice_path" class="text-xs text-slate-600">—</span>
                       </td>
+                      <td class="px-5 py-4">
+                        <div x-show="isAdmin" class="flex items-center gap-2">
+                          <button @click="editAsset(asset)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-400/20">Edit</button>
+                          <button @click="deleteAsset(asset)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-400/20">Remove</button>
+                        </div>
+                      </td>
                     </tr>
                   </template>
                 </tbody>
@@ -275,9 +281,12 @@
         </section>
 
         <section x-show="page === 'people'" x-cloak x-transition.opacity>
-          <div class="mb-6">
-            <p class="text-sm font-medium text-emerald-400">PEOPLE DIRECTORY</p>
-            <h2 class="mt-1 text-2xl font-semibold text-white">Asset custodians</h2>
+          <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm font-medium text-emerald-400">PEOPLE DIRECTORY</p>
+              <h2 class="mt-1 text-2xl font-semibold text-white">Asset custodians</h2>
+            </div>
+            <button x-show="isAdmin" @click="openNewPerson()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-emerald transition hover:brightness-110">+ New Person</button>
           </div>
           <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <template x-for="person in people" :key="person.id">
@@ -292,6 +301,10 @@
                 <div class="mt-5 space-y-2 border-t border-slate-800/70 pt-4 text-sm text-slate-400">
                   <p class="truncate" x-text="person.email || 'No email'"></p>
                   <p x-text="person.phone || 'No phone'"></p>
+                </div>
+                <div x-show="isAdmin" class="mt-4 flex items-center gap-2 border-t border-slate-800/70 pt-4">
+                  <button @click="editPerson(person)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-400/20">Edit</button>
+                  <button @click="deletePerson(person)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-400/20">Remove</button>
                 </div>
               </div>
             </template>
@@ -529,16 +542,23 @@
   <div x-show="assetModal" x-cloak @keydown.escape.window="assetModal = false" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4 backdrop-blur-sm">
     <div @click.outside="assetModal = false" x-transition class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
       <div class="flex items-start justify-between">
-        <div><h3 class="text-lg font-semibold text-white" data-i18n="modal.new_asset">Register New Asset</h3><p class="mt-1 text-sm text-slate-500" data-i18n="modal.new_asset_help">Add a device to the operational inventory.</p></div>
+        <div><h3 class="text-lg font-semibold text-white" x-text="editingAssetId ? 'Edit Asset' : translated('modal.new_asset', 'Register New Asset')"></h3><p class="mt-1 text-sm text-slate-500" x-text="editingAssetId ? 'Update the details of this device in the operational inventory.' : translated('modal.new_asset_help', 'Add a device to the operational inventory.')"></p></div>
         <button @click="assetModal = false" class="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-white">✕</button>
       </div>
-      <form @submit.prevent="createAsset()" class="mt-6 grid gap-4 sm:grid-cols-2">
+      <form @submit.prevent="saveAsset()" class="mt-6 grid gap-4 sm:grid-cols-2">
         <template x-for="field in assetFields" :key="field.key">
           <label :class="field.wide ? 'sm:col-span-2' : ''">
             <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500" x-text="field.label"></span>
             <textarea x-show="field.textarea" x-model="newAsset[field.key]" rows="3" :required="field.required"
                       class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50"></textarea>
-            <input x-show="!field.textarea" x-model="newAsset[field.key]" :type="field.type || 'text'" :required="field.required" :placeholder="field.placeholder || ''"
+            <select x-show="field.select" x-model="newAsset[field.key]"
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50">
+              <option value="">No status</option>
+              <template x-for="option in assetStatusOptions" :key="option">
+                <option :value="option" x-text="option"></option>
+              </template>
+            </select>
+            <input x-show="!field.textarea && !field.select" x-model="newAsset[field.key]" :type="field.type || 'text'" :required="field.required" :placeholder="field.placeholder || ''"
                    class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
           </label>
         </template>
@@ -550,7 +570,46 @@
         </label>
         <div class="mt-2 flex justify-end gap-3 border-t border-slate-800 pt-5 sm:col-span-2">
           <button type="button" @click="assetModal = false" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800" data-i18n="modal.cancel">Cancel</button>
-          <button type="submit" :disabled="saving" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50" x-text="saving ? translated('modal.saving', 'Saving…') : translated('modal.create', 'Create Asset')"></button>
+          <button type="submit" :disabled="saving" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50" x-text="saving ? translated('modal.saving', 'Saving…') : (editingAssetId ? 'Save Changes' : translated('modal.create', 'Create Asset'))"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div x-show="personModal" x-cloak @keydown.escape.window="personModal = false" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4 backdrop-blur-sm">
+    <div @click.outside="personModal = false" x-transition class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+      <div class="flex items-start justify-between">
+        <div><h3 class="text-lg font-semibold text-white" x-text="editingPersonId ? 'Edit Person' : 'Register New Person'"></h3><p class="mt-1 text-sm text-slate-500" x-text="editingPersonId ? 'Update the details of this asset custodian.' : 'Add a person who can receive asset assignments.'"></p></div>
+        <button @click="personModal = false" class="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-white">✕</button>
+      </div>
+      <form @submit.prevent="savePerson()" class="mt-6 grid gap-4 sm:grid-cols-2">
+        <label class="sm:col-span-2">
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Full Name</span>
+          <input x-model="newPerson.full_name" required placeholder="Jane Doe" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
+        </label>
+        <label>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Org Unit</span>
+          <input x-model="newPerson.org_unit" placeholder="Operations" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
+        </label>
+        <label>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Job Role</span>
+          <input x-model="newPerson.job_role" placeholder="Technician" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
+        </label>
+        <label>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Email</span>
+          <input x-model="newPerson.email" type="email" placeholder="jane@example.com" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
+        </label>
+        <label>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Phone</span>
+          <input x-model="newPerson.phone" placeholder="+1 555 0100" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
+        </label>
+        <label class="sm:col-span-2">
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Notes</span>
+          <textarea x-model="newPerson.notes" rows="3" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50"></textarea>
+        </label>
+        <div class="mt-2 flex justify-end gap-3 border-t border-slate-800 pt-5 sm:col-span-2">
+          <button type="button" @click="personModal = false" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800" data-i18n="modal.cancel">Cancel</button>
+          <button type="submit" :disabled="saving" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50" x-text="saving ? translated('modal.saving', 'Saving…') : (editingPersonId ? 'Save Changes' : 'Create Person')"></button>
         </div>
       </form>
     </div>
@@ -584,8 +643,73 @@
   <script>
     function forgeApp() {
       const icon = (path) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${path}</svg>`;
+      const div = (a, b) => Math.floor(a / b);
+      const mod = (a, b) => a - Math.floor(a / b) * b;
+      function jalCal(jy) {
+        const breaks = [-61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178];
+        const bl = breaks.length;
+        const gy = jy + 621;
+        let leapJ = -14;
+        let jp = breaks[0];
+        let jm = 0, jump = 0;
+        for (let i = 1; i < bl; i += 1) {
+          jm = breaks[i];
+          jump = jm - jp;
+          if (jy < jm) break;
+          leapJ = leapJ + div(jump, 33) * 8 + div(mod(jump, 33), 4);
+          jp = jm;
+        }
+        const n = jy - jp;
+        leapJ = leapJ + div(n, 33) * 8 + div(mod(n, 33) + 3, 4);
+        if (mod(jump, 33) === 4 && jump - n === 4) leapJ += 1;
+        const leap = mod(leapJ, 33) === 4 || mod(leapJ, 33) === 0;
+        return { leap, gy, march: 20 + div(leapJ, 33) * 4 + mod(leapJ, 33) };
+      }
+      function g2d(gy, gm, gd) {
+        let d = div((gy + div(gm - 8, 6) + 100100) * 1461, 4) + div(153 * mod(gm + 9, 12) + 2, 5) + gd - 34840408;
+        d = d - div(div(gy + 100100 + div(gm - 8, 6), 100) * 3, 4) + 752;
+        return d;
+      }
+      function d2g(jdn) {
+        let j = 4 * jdn + 139361631;
+        j = j + div(div(4 * jdn + 183187720, 146097) * 3, 4) * 4 - 3908;
+        const i = div(mod(j, 1461), 4) * 5 + 308;
+        const gd = div(mod(i, 153), 5) + 1;
+        const gm = mod(div(i, 153), 12) + 1;
+        const gy = div(j, 1461) - 100100 + div(8 - gm, 6);
+        return { gy, gm, gd };
+      }
+      function j2d(jy, jm, jd) {
+        const r = jalCal(jy);
+        return g2d(r.gy, 3, r.march) + (jm - 1) * 31 - div(jm, 7) * (jm - 7) + jd - 1;
+      }
+      function d2j(jdn) {
+        const gy = d2g(jdn).gy;
+        const jy = gy - 621;
+        const r = jalCal(jy);
+        const k = jdn - g2d(gy, 3, r.march);
+        const jm = div(k, 31) + 1;
+        const jd = mod(k, 31) + 1;
+        return { jy, jm, jd };
+      }
+      function jalaliToGregorian(jy, jm, jd) {
+        if (!Number.isInteger(jy) || !Number.isInteger(jm) || !Number.isInteger(jd)) return null;
+        if (jm < 1 || jm > 12 || jd < 1 || jd > 31) return null;
+        const g = d2g(j2d(jy, jm, jd));
+        const back = d2j(g2d(g.gy, g.gm, g.gd));
+        if (back.jy !== jy || back.jm !== jm || back.jd !== jd) return null;
+        return { y: g.gy, m: g.gm, d: g.gd };
+      }
+      function gregorianToJalali(gy, gm, gd) {
+        if (!Number.isInteger(gy) || !Number.isInteger(gm) || !Number.isInteger(gd)) return null;
+        if (gm < 1 || gm > 12 || gd < 1 || gd > 31) return null;
+        const j = d2j(g2d(gy, gm, gd));
+        const back = d2g(j2d(j.jy, j.jm, j.jd));
+        if (back.gy !== gy || back.gm !== gm || back.gd !== gd) return null;
+        return { y: j.jy, m: j.jm, d: j.jd };
+      }
       return {
-        page: "dashboard", preferencesTab: "access", loading: true, saving: false, assetModal: false, authenticated: Boolean(localStorage.getItem("forgeos-token")),
+        page: "dashboard", preferencesTab: "access", loading: true, saving: false, assetModal: false, editingAssetId: null, personModal: false, editingPersonId: null, authenticated: Boolean(localStorage.getItem("forgeos-token")),
         currentUser: null, loginForm: { username: "", password: "" },
         language: localStorage.getItem("forgeos-language") || "en", dictionary: {},
         dragging: false, selectedFile: null, uploading: false, uploadProgress: 0, importResult: null,
@@ -597,6 +721,7 @@
         invoiceFile: null,
         exportHistory: [], exportHistoryLoading: false, exportHistoryError: false,
         newAsset: { asset_tag: "", type: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" },
+        newPerson: { full_name: "", org_unit: "", job_role: "", email: "", phone: "", status: "active", notes: "" },
 navigation: [
           { id: "dashboard", label: "Dashboard", labelKey: "nav.dashboard", icon: icon('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>') },
           { id: "assets", label: "Assets", labelKey: "nav.assets", icon: icon('<path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4"/>') },
@@ -613,14 +738,14 @@ navigation: [
           { key: "gpu_name", label: "Graphics" }, { key: "bios_version", label: "BIOS" }
         ],
         assetFields: [
-          { key: "asset_tag", label: "Asset Tag (optional)", placeholder: "Auto-generated" },
+          { key: "asset_tag", label: "Asset Tag", placeholder: "Auto-generated" },
           { key: "type", label: "Type", required: true, placeholder: "Laptop" },
           { key: "manufacturer", label: "Manufacturer", placeholder: "HP" }, { key: "brand", label: "Brand", placeholder: "Dell" }, { key: "model", label: "Model", placeholder: "Latitude 7450" },
           { key: "ram_mb", label: "RAM (MB)", type: "number" }, { key: "cpu_name", label: "CPU" },
           { key: "serial_number", label: "Serial Number" }, { key: "location", label: "Location" },
-          { key: "purchase_date", label: "Purchase Date", type: "date" },
+          { key: "purchase_date", label: "Purchase Date (Jalali YYYY/MM/DD)", placeholder: "1403/05/15" },
           { key: "purchase_price", label: "Purchase Price", type: "number", placeholder: "0.00" },
-          { key: "status", label: "Status", required: true }, { key: "notes", label: "Notes", wide: true, textarea: true }
+          { key: "status", label: "Status", select: true }, { key: "notes", label: "Notes", wide: true, textarea: true }
         ],
         async init() {
  const hash = window.location.hash.replace("#", "");
@@ -654,6 +779,11 @@ navigation: [
         get filteredUsers() {
           const query = this.userSearch.trim().toLowerCase();
           return query ? this.users.filter(user => `${user.username} ${user.role}`.toLowerCase().includes(query)) : this.users;
+        },
+        get assetStatusOptions() {
+          const fixed = ["active", "maintenance", "stock", "retired"];
+          const present = this.assets.map(asset => asset.status).filter(Boolean);
+          return [...new Set([...fixed, ...present])];
         },
         get pageTitle() {
           const item = this.navigation.find(entry => entry.id === this.page);
@@ -784,16 +914,134 @@ navigation: [
           } catch (error) { this.toast(error.message, "error"); }
         },
         targetName(targetId) { return this.targets.find(item => item.id === targetId)?.name || `Target #${targetId}`; },
-        async createAsset() {
+        openNewAsset() {
+          this.editingAssetId = null;
+          this.invoiceFile = null;
+          this.newAsset = { asset_tag: "", type: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" };
+          this.assetModal = true;
+        },
+        editAsset(asset) {
+          this.editingAssetId = asset.id;
+          this.invoiceFile = null;
+          this.newAsset = {
+            asset_tag: asset.asset_tag || "", type: asset.type || "", manufacturer: asset.manufacturer || "", brand: asset.brand || "",
+            model: asset.model || "", ram_mb: asset.ram_mb != null ? String(asset.ram_mb) : "", cpu_name: asset.cpu_name || "", serial_number: asset.serial_number || "",
+            location: asset.location || "", status: asset.status || "", purchase_date: this.toJalali(asset.purchase_date), purchase_price: asset.purchase_price != null ? String(asset.purchase_price) : "",
+            invoice_path: asset.invoice_path || "", notes: asset.notes || ""
+          };
+          this.assetModal = true;
+        },
+        isValidAssetTag(tag) { return /^[A-Z][A-Z0-9]{1,9}-\d{4,}$/.test(tag); },
+        generateAssetTag() {
+          const now = new Date();
+          const pad = (n) => String(n).padStart(2, "0");
+          const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+          for (let i = 0; i < 5; i += 1) {
+            const candidate = `AST-${stamp}${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`;
+            if (!this.assets.some(asset => asset.asset_tag === candidate)) return candidate;
+          }
+          return null;
+        },
+        toJalali(iso) {
+          if (!iso) return "";
+          const match = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(iso));
+          if (!match) return "";
+          const j = gregorianToJalali(Number(match[1]), Number(match[2]), Number(match[3]));
+          if (!j) return "";
+          return `${j.y}/${String(j.m).padStart(2, "0")}/${String(j.d).padStart(2, "0")}`;
+        },
+        fromJalali(value) {
+          const match = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(String(value).trim());
+          if (!match) return null;
+          const g = jalaliToGregorian(Number(match[1]), Number(match[2]), Number(match[3]));
+          if (!g) return null;
+          return `${g.y}-${String(g.m).padStart(2, "0")}-${String(g.d).padStart(2, "0")}`;
+        },
+        async saveAsset() {
           this.saving = true;
+          const editing = Boolean(this.editingAssetId);
           try {
             const payload = Object.fromEntries(Object.entries(this.newAsset).map(([key, value]) => [key, value.trim() || null]));
-            payload.status = payload.status || "active";
-            const createdAsset = await this.api("/api/v1/assets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-            if (this.invoiceFile) await this.uploadInvoice(createdAsset.id, this.invoiceFile);
-            this.assetModal = false; this.invoiceFile = null; this.newAsset = { asset_tag: "", type: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" };
-            await Promise.all([this.loadAssets(), this.loadSummary()]); this.toast("Asset registered successfully");
+
+            let assetTag = (this.newAsset.asset_tag || "").trim().toUpperCase();
+            if (editing) {
+              if (assetTag) payload.asset_tag = assetTag;
+              else delete payload.asset_tag;
+            } else if (!assetTag) {
+              assetTag = this.generateAssetTag();
+              if (!assetTag) {
+                this.toast("Could not generate an asset tag. Please enter one manually.", "error");
+                return;
+              }
+              payload.asset_tag = assetTag;
+            } else {
+              if (!this.isValidAssetTag(assetTag)) {
+                this.toast("Asset tag must match PREFIX-0001 format (letters/digits with at least 4 digits).", "error");
+                return;
+              }
+              payload.asset_tag = assetTag;
+            }
+
+            const rawDate = (this.newAsset.purchase_date || "").trim();
+            if (rawDate) {
+              const iso = this.fromJalali(rawDate);
+              if (iso === null) {
+                this.toast("Purchase date is not a valid Jalali date (YYYY/MM/DD).", "error");
+                return;
+              }
+              payload.purchase_date = iso;
+            } else {
+              payload.purchase_date = null;
+            }
+
+            if (!payload.status) delete payload.status;
+            if (editing) delete payload.invoice_path;
+            const path = editing ? `/api/v1/assets/${this.editingAssetId}` : "/api/v1/assets";
+            const savedAsset = await this.api(path, { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            if (this.invoiceFile) await this.uploadInvoice(savedAsset.id, this.invoiceFile);
+            this.assetModal = false; this.invoiceFile = null; this.editingAssetId = null;
+            this.newAsset = { asset_tag: "", type: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", serial_number: "", location: "", status: "active", purchase_date: "", purchase_price: "", invoice_path: "", notes: "" };
+            await Promise.all([this.loadAssets(), this.loadSummary()]);
+            this.toast(editing ? "Asset updated successfully" : "Asset registered successfully");
           } catch (error) { this.toast(error.message, "error"); } finally { this.saving = false; }
+        },
+        async deleteAsset(asset) {
+          if (!window.confirm(`Delete asset "${asset.asset_tag}"? This also removes its assignments, warranties, and snapshots.`)) return;
+          try {
+            await this.api(`/api/v1/assets/${asset.id}`, { method: "DELETE" });
+            await Promise.all([this.loadAssets(), this.loadSummary()]);
+            this.toast("Asset deleted");
+          } catch (error) { this.toast(error.message, "error"); }
+        },
+        openNewPerson() {
+          this.editingPersonId = null;
+          this.newPerson = { full_name: "", org_unit: "", job_role: "", email: "", phone: "", status: "active", notes: "" };
+          this.personModal = true;
+        },
+        editPerson(person) {
+          this.editingPersonId = person.id;
+          this.newPerson = { full_name: person.full_name || "", org_unit: person.org_unit || "", job_role: person.job_role || "", email: person.email || "", phone: person.phone || "", status: person.status || "active", notes: person.notes || "" };
+          this.personModal = true;
+        },
+        async savePerson() {
+          this.saving = true;
+          const editing = Boolean(this.editingPersonId);
+          try {
+            const payload = Object.fromEntries(Object.entries(this.newPerson).map(([key, value]) => [key, value.trim() || null]));
+            const path = editing ? `/api/v1/people/${this.editingPersonId}` : "/api/v1/people";
+            await this.api(path, { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            this.personModal = false; this.editingPersonId = null;
+            await Promise.all([this.loadPeople(), this.loadSummary()]);
+            this.toast(editing ? "Person updated" : "Person registered");
+          } catch (error) { this.toast(error.message, "error"); } finally { this.saving = false; }
+        },
+        async deletePerson(person) {
+          if (!window.confirm(`Delete person "${person.full_name}"?`)) return;
+          try {
+            await this.api(`/api/v1/people/${person.id}`, { method: "DELETE" });
+            await Promise.all([this.loadPeople(), this.loadSummary()]);
+            this.toast("Person deleted");
+          } catch (error) { this.toast(error.message, "error"); }
         },
         async uploadInvoice(assetId, file) {
           const body = new FormData(); body.append("file", file);
