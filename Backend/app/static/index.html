@@ -689,6 +689,7 @@
             </template>
           </div>
         </div>
+      </template>
 
       <div class="mt-6 flex justify-end gap-3 border-t border-slate-800 pt-5">
         <button type="button" @click="extractModal = false" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800">Cancel</button>
@@ -1346,18 +1347,7 @@ navigation: [
           this.extractCandidates = [];
           this.extractFiles = [];
           this.extractText = "";
-          this.suggestAssetName();
-          this.suggestCategory();
-          if (skipped.length) {
-            this.toast(`Applied ${applied} field${applied === 1 ? "" : "s"}; skipped existing manual: ${skipped.join(", ")}`, applied ? "success" : "error");
-          } else {
-            this.toast(`Applied ${applied} extracted field${applied === 1 ? "" : "s"}`);
-          }
-        },
-          this.extractResult = null;
-          this.extractCandidates = [];
-          this.extractFile = null;
-          this.extractText = "";
+          this.manualMode = true;
           this.suggestAssetName();
           this.suggestCategory();
           if (skipped.length) {

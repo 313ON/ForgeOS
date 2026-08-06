@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -176,6 +179,56 @@ def test_spec_extract_endpoint() -> None:
     assert unknown.status_code == 422
 
     assert client.post("/api/v1/spec-extract", data={"text": SYSTEMINFO_SAMPLE}).status_code == 401
+
+
+def test_spec_extract_accepts_log_files() -> None:
+    """The UI accepts .txt and .log; the endpoint must accept both."""
+    client, _ = build_app()
+    headers = login(client)
+
+    log_upload = client.post(
+        "/api/v1/spec-extract",
+        headers=headers,
+        files={"file": ("system.log", SYSTEMINFO_SAMPLE.encode("utf-8"), "text/plain")},
+    )
+    assert log_upload.status_code == 200
+    assert log_upload.json()["provider"]["id"] == "systeminfo"
+
+    txt_upload = client.post(
+        "/api/v1/spec-extract",
+        headers=headers,
+        files={"file": ("system.txt", SYSTEMINFO_SAMPLE.encode("utf-8"), "text/plain")},
+    )
+    assert txt_upload.status_code == 200
+
+    bad_ext = client.post(
+        "/api/v1/spec-extract",
+        headers=headers,
+        files={"file": ("system.exe", SYSTEMINFO_SAMPLE.encode("utf-8"), "application/octet-stream")},
+    )
+    assert bad_ext.status_code == 415
+
+
+def test_collector_scripts_downloadable() -> None:
+    """Both collector scripts must be served by the static mount."""
+    static_dir = Path(__file__).resolve().parents[2] / "app" / "static"
+    app = FastAPI()
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    client = TestClient(app)
+
+    for name in ("collect_windows_specs.ps1", "collect_linux_specs.sh"):
+        resp = client.get(f"/static/scripts/{name}")
+        assert resp.status_code == 200, f"{name} not downloadable"
+        assert len(resp.content) > 100, f"{name} appears empty"
+        # Verify expected content markers
+        if name.endswith(".ps1"):
+            assert "systeminfo" in resp.text
+            assert "dxdiag" in resp.text
+        else:
+            assert "hostnamectl" in resp.text
+            assert "lscpu" in resp.text
+            # Shell scripts must use LF line endings
+            assert b"\r\n" not in resp.content, f"{name} contains CRLF line endings"
 
 
 def test_full_flow_extract_apply_create_asset_visible() -> None:

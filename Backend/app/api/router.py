@@ -237,8 +237,8 @@ async def spec_extract(
 ) -> ExtractResponse:
     """Extract candidate asset fields from a user-supplied report (upload or paste)."""
     if file is not None:
-        if not (file.filename or "").casefold().endswith(".txt"):
-            raise HTTPException(415, "Only .txt reports are supported")
+        if not (file.filename or "").casefold().endswith((".txt", ".log")):
+            raise HTTPException(415, "Only .txt and .log reports are supported")
         content = await file.read()
         if len(content) > 5 * 1024 * 1024:
             raise HTTPException(413, "Report exceeds the 5 MB upload limit")
