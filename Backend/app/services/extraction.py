@@ -23,6 +23,8 @@ ASSET_FIELD_CANDIDATES: list[tuple[str, str, str]] = [
     ("ram_mb", "RAM (MB)", "asset"),
     ("gpu_name", "Graphics", "asset"),
     ("bios_version", "BIOS Version", "asset"),
+    ("storage_type", "Storage Type", "spec"),
+    ("storage_capacity", "Storage Capacity", "spec"),
     ("ip_address", "IP Address", "asset"),
     ("cpu_cores", "CPU Cores", "spec"),
     ("logical_cpu_cores", "Logical Cores", "spec"),

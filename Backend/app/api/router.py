@@ -216,24 +216,30 @@ def list_assets(
 def create_asset(payload: AssetCreate, db: Session = Depends(get_db), _: AuthenticatedUser = Depends(require_admin)) -> dict[str, Any]:
     """Create an asset, generating a tag when omitted."""
     values = _normalize_asset_values(payload.model_dump())
-    # Allow creating assets without a user-supplied `type` or `asset_tag`.
-    tag = values.pop("asset_tag", None)
-    if tag:
-        try:
-            values["asset_tag"] = validate_manual_tag(tag)
-        except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    else:
-        # Only generate a tag when a type is provided; otherwise leave tag null.
-        if values.get("type"):
-            values["asset_tag"] = generate_asset_tag(db, values["type"])
+    logger.debug("create_asset incoming values=%s", values)
+    try:
+        # Allow creating assets without a user-supplied `type` or `asset_tag`.
+        tag = values.pop("asset_tag", None)
+        if tag:
+            try:
+                values["asset_tag"] = validate_manual_tag(tag)
+            except ValueError as exc:
+                logger.exception("Asset create validation failed")
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
         else:
-            values["asset_tag"] = None
-    asset = Asset(**values)
-    db.add(asset)
-    _commit_or_conflict(db, "Asset tag already exists")
-    db.refresh(asset)
-    return _asset_payload(db, asset)
+            # Only generate a tag when a type is provided; otherwise leave tag null.
+            if values.get("type"):
+                values["asset_tag"] = generate_asset_tag(db, values["type"])
+            else:
+                values["asset_tag"] = None
+        asset = Asset(**values)
+        db.add(asset)
+        _commit_or_conflict(db, "Asset tag already exists")
+        db.refresh(asset)
+        return _asset_payload(db, asset)
+    except Exception:
+        logger.exception("Asset create failed")
+        raise
 
 
 @router.get("/assets/tag-suggestion")
@@ -289,7 +295,13 @@ async def spec_extract(
         reports.append(("pasted.txt", text))
     if not reports:
         raise HTTPException(422, "Provide a report file or paste report text")
-    return extract_reports(reports)
+    try:
+        result = extract_reports(reports)
+        logger.debug("spec_extract parsed_fields=%s providers=%s errors=%s warnings=%s", result.parsed_fields, [source.filename for source in result.sources], [error.filename for error in result.errors], [warning.filename for warning in result.warnings])
+        return result
+    except Exception:
+        logger.exception("spec_extract failed")
+        raise
 
 
 @router.get("/assets/{asset_id}", response_model=AssetRead)
@@ -303,24 +315,30 @@ def update_asset(asset_id: int, payload: AssetUpdate, db: Session = Depends(get_
     """Apply a partial update without regenerating the asset tag."""
     asset = _get_or_404(db, Asset, asset_id, "Asset")
     raw_values = payload.model_dump(exclude_unset=True)
-    if "specifications" not in raw_values and any(key in raw_values for key in LEGACY_SPEC_FIELDS):
-        try:
-            raw_values["specifications"] = json.loads(asset.specifications) if asset.specifications else {}
-        except (TypeError, json.JSONDecodeError):
-            raw_values["specifications"] = {}
-    values = _normalize_asset_values(raw_values)
-    for key, value in values.items():
-        # Allow clearing `asset_tag` and `type` by accepting explicit null values.
-        if key == "asset_tag":
-            if value:
-                try:
-                    value = validate_manual_tag(value)
-                except ValueError as exc:
-                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-        setattr(asset, key, value)
-    _commit_or_conflict(db, "Asset tag already exists")
-    db.refresh(asset)
-    return _asset_payload(db, asset)
+    logger.debug("update_asset asset_id=%s raw_values=%s", asset_id, raw_values)
+    try:
+        if "specifications" not in raw_values and any(key in raw_values for key in LEGACY_SPEC_FIELDS):
+            try:
+                raw_values["specifications"] = json.loads(asset.specifications) if asset.specifications else {}
+            except (TypeError, json.JSONDecodeError):
+                raw_values["specifications"] = {}
+        values = _normalize_asset_values(raw_values)
+        for key, value in values.items():
+            # Allow clearing `asset_tag` and `type` by accepting explicit null values.
+            if key == "asset_tag":
+                if value:
+                    try:
+                        value = validate_manual_tag(value)
+                    except ValueError as exc:
+                        logger.exception("Asset update validation failed")
+                        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+            setattr(asset, key, value)
+        _commit_or_conflict(db, "Asset tag already exists")
+        db.refresh(asset)
+        return _asset_payload(db, asset)
+    except Exception:
+        logger.exception("Asset update failed")
+        raise
 
 
 @router.delete("/assets/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)

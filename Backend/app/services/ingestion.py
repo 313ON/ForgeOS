@@ -29,6 +29,8 @@ EMPTY_RESULT: ParsedSystemInfo = {
     "gpu_name": None,
     "bios_version": None,
     "ip_address": None,
+    "storage_type": None,
+    "storage_capacity": None,
 }
 
 
@@ -121,7 +123,7 @@ def parse_report(source: SourceType, text: str) -> ParsedSystemInfo:
     if source == "collector_memory":
         return parse_memory_fragment(text)
     if source == "collector_storage":
-        return dict(EMPTY_RESULT)
+        return parse_storage(text)
     return parse_systeminfo(text)
 
 
@@ -211,6 +213,18 @@ def parse_memory_fragment(text: str) -> ParsedSystemInfo:
     result["ram_mb"] = _parse_memory_mb(
         _first(fields, "total physical memory", "physical memory", "mem")
     )
+    return result
+
+
+def parse_storage(text: str) -> ParsedSystemInfo:
+    """Parse storage inventory fragments from Windows storage reports."""
+    result = dict(EMPTY_RESULT)
+    fields = _key_value_lines(text)
+    result["storage_type"] = _first(fields, "media type", "mediaType", "mediatype", "interface type")
+    size_value = _first(fields, "size", "capacity")
+    result["storage_capacity"] = _parse_memory_mb(size_value)
+    result["model"] = _first(fields, "model", "model name", "disk model") or result["model"]
+    result["serial_number"] = _first(fields, "serial number", "serialnumber", "serial_number") or result["serial_number"]
     return result
 
 
