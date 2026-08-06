@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ForgeOS · IT Operations</title>
+  <title>ForgeOS · Enterprise Operations Command Center</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <meta name="theme-color" content="#0D0E11">
   <link rel="stylesheet" href="/static/css/variables.css">
   <link rel="stylesheet" href="/static/css/main.css">
   <link rel="stylesheet" href="/static/css/theme.css">
@@ -24,246 +26,361 @@
   <style>
     [x-cloak] { display: none !important; }
     :root { color-scheme: dark; }
-    body { background: #070b12; }
-    button, a, input, select, textarea { transition-property: color, background-color, border-color, opacity, box-shadow, transform; transition-duration: 150ms; }
-    button:not(:disabled):active, a:active { transform: scale(0.96); }
-    :focus-visible { outline: 2px solid rgba(45, 212, 191, 0.75); outline-offset: 2px; }
-    .enterprise-panel { border: 1px solid rgba(51, 65, 85, 0.78); background: rgba(15, 23, 42, 0.72); box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18); }
-    .form-section { border: 1px solid rgba(51, 65, 85, 0.72); background: rgba(2, 6, 23, 0.34); }
-    .empty-state { border: 1px dashed rgba(71, 85, 105, 0.72); background: rgba(15, 23, 42, 0.42); }
+    body { background: #0D0E11; }
+    button, a, input, select, textarea { transition-property: color, background-color, border-color, opacity, box-shadow; transition-duration: 100ms; }
+    button:not(:disabled):active, a:active { opacity: 0.82; }
+    :focus-visible { outline: 2px solid #00E5FF; outline-offset: 2px; }
+    .form-section { border: 1px solid #3B4252; background: #13151A; }
+    .empty-state { border: 1px dashed #3B4252; background: #13151A; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #020617; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+    ::-webkit-scrollbar-track { background: #0D0E11; }
+    ::-webkit-scrollbar-thumb { background: #3B4252; border-radius: 999px; }
   </style>
 </head>
-<body class="h-full text-slate-200 antialiased" x-data="forgeApp()" x-init="init()">
-  <svg class="neural-mesh" viewBox="0 0 1600 1000" preserveAspectRatio="none" aria-hidden="true">
-    <g fill="none" stroke="url(#mesh-gradient)" stroke-width="1">
-      <path d="M0 220C190 40 320 360 520 180S850 90 1040 270s350-120 560-40"/>
-      <path d="M0 620C220 440 330 720 570 520s300-80 490 70 320-40 540-180"/>
-      <path d="M110 0c80 230 260 210 310 420s230 250 420 60 370-100 540 170"/>
-      <path d="M900 0c-40 230-150 300-40 470s280 110 400 330"/>
-      <circle cx="520" cy="180" r="7"/><circle cx="1040" cy="270" r="7"/><circle cx="570" cy="520" r="7"/><circle cx="1280" cy="410" r="7"/>
-    </g>
-    <defs><linearGradient id="mesh-gradient" x1="0" x2="1"><stop stop-color="#06b6d4"/><stop offset="1" stop-color="#10b981"/></linearGradient></defs>
-  </svg>
-  <div x-show="authenticated" x-cloak class="min-h-full lg:flex">
-    <aside class="app-sidebar fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-800/80 bg-slate-950/80 backdrop-blur-xl lg:flex lg:flex-col">
-      <div class="flex h-20 items-center gap-3 border-b border-slate-800/70 px-6">
-        <div class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-slate-950 shadow-cyan">
+<body class="h-full text-slate-200 antialiased" x-data="forgeApp()" x-init="init()"
+      @keydown.window="handleGlobalShortcut($event)">
+  <a href="#workspace-main" class="skip-link">Skip to operations workspace</a>
+  <div x-show="authenticated" x-cloak class="min-h-full lg:flex" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+    <aside class="app-sidebar fixed inset-y-0 left-0 z-40 hidden border-r border-[#3B4252] bg-[#0D0E11] lg:flex lg:flex-col">
+      <div class="flex h-16 items-center gap-3 border-b border-[#2E3440] px-4">
+        <div class="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-cyan-300/40 bg-cyan-300/10 text-cyan-300 status-glow--info">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <circle cx="12" cy="12" r="3.2" fill="currentColor"/><circle cx="4" cy="7" r="1.5" fill="currentColor"/><circle cx="20" cy="7" r="1.5" fill="currentColor"/><circle cx="5" cy="18" r="1.5" fill="currentColor"/><circle cx="19" cy="18" r="1.5" fill="currentColor"/><path d="m9.5 10-4.2-2M14.5 10l4.2-2M9.5 14l-3.8 3M14.5 14l3.8 3"/>
           </svg>
         </div>
-        <div>
+        <div x-show="!sidebarCollapsed" x-transition.opacity class="min-w-0">
           <div class="font-semibold tracking-wide text-white">ForgeOS</div>
-          <div class="text-xs text-slate-500" data-i18n="brand.subtitle">IT Operations</div>
-          <div class="mt-1 text-[10px] font-medium text-cyan-300/80" data-i18n="tagline">Live &amp; Living Operations OS</div>
+          <div class="telemetry-text text-[10px] text-cyan-300">ENTERPRISE CONTROL PLANE</div>
         </div>
       </div>
 
-      <nav class="flex-1 space-y-2 px-4 py-6">
+      <div x-show="!sidebarCollapsed" class="border-b border-[#2E3440] p-3">
+        <button type="button" disabled title="Architecture Gap: multi-tenant context is not implemented"
+                class="flex w-full items-center gap-2 rounded-md border border-[#3B4252] bg-[#13151A] px-3 py-2 text-left opacity-80">
+          <span class="h-2 w-2 rounded-full bg-cyan-300"></span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-xs font-medium text-white">Local Workspace</span>
+            <span class="telemetry-text block text-[9px] text-muted">SINGLE TENANT · LOCAL NODE</span>
+          </span>
+        </button>
+      </div>
+
+      <nav class="flex-1 space-y-1 overflow-y-auto px-2 py-3" aria-label="Primary workspace">
         <template x-for="item in navigation" :key="item.id">
-          <button x-show="!item.adminOnly || isAdmin" @click="navigate(item.id)" class="group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition"
-                  :class="page === item.id ? 'bg-cyan-400/10 text-cyan-300 ring-1 ring-cyan-400/20' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'">
-            <span x-html="item.icon" class="h-5 w-5"></span>
-            <span x-text="translated(item.labelKey, item.label)"></span>
+          <button x-show="!item.adminOnly || isAdmin" @click="navigate(item.id)" :title="sidebarCollapsed ? item.label : null"
+                  class="group flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-xs font-medium"
+                  :class="page === item.id ? 'border border-cyan-300/30 bg-cyan-300/10 text-cyan-200' : 'border border-transparent text-slate-400 hover:border-[#3B4252] hover:bg-[#181B21] hover:text-white'">
+            <span x-html="item.icon" class="h-4 w-4 shrink-0"></span>
+            <span x-show="!sidebarCollapsed" x-text="translated(item.labelKey, item.label)"></span>
             <span x-show="item.id === 'dashboard' && summary.warning_count" x-text="summary.warning_count"
-                  class="ml-auto rounded-full bg-amber-400/10 px-2 py-0.5 text-xs text-amber-300"></span>
+                  class="ml-auto rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-300"></span>
           </button>
         </template>
       </nav>
 
-      <div class="m-4 rounded-2xl border border-emerald-400/10 bg-emerald-400/5 p-4">
-        <div class="flex items-center gap-2 text-xs font-semibold text-emerald-300">
-          <span class="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981]"></span>
-          <span data-i18n="status.api_online">API ONLINE</span>
+      <div class="border-t border-[#2E3440] p-2">
+        <div x-show="!sidebarCollapsed" class="mb-2 rounded-md border border-emerald-300/20 bg-emerald-300/5 p-3">
+          <div class="flex items-center gap-2 telemetry-text text-[10px] font-semibold text-emerald-300">
+            <span class="h-2 w-2 rounded-full bg-emerald-300 status-glow--ok"></span>
+            <span data-i18n="status.api_online">API ONLINE</span>
+          </div>
+          <p class="mt-2 text-[11px] leading-4 text-secondary">FastAPI · SQLite · single process</p>
         </div>
-        <p class="mt-2 text-xs leading-5 text-slate-500" data-i18n="status.local_workspace">Local-first inventory workspace ready for operations.</p>
+        <button @click="toggleSidebar()" type="button"
+                class="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-[#3B4252] bg-[#13151A] text-xs text-slate-400 hover:text-cyan-200"
+                :aria-label="sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'">
+          <svg class="h-4 w-4" :class="sidebarCollapsed ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+          <span x-show="!sidebarCollapsed">Collapse</span>
+        </button>
       </div>
     </aside>
 
     <div class="app-content min-w-0 flex-1">
-      <header class="sticky top-0 z-30 border-b border-slate-800/70 bg-slate-950/75 backdrop-blur-xl">
-        <div class="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
+      <header class="sticky top-0 z-30 bg-[#0D0E11]/95 backdrop-blur app-header">
+        <div class="flex h-16 items-center justify-between gap-4">
           <div class="flex items-center gap-3">
-            <div class="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-slate-950 lg:hidden">
+            <div class="grid h-9 w-9 place-items-center rounded-md border border-cyan-300/40 bg-cyan-300/10 text-cyan-300 lg:hidden">
               <span class="font-black">F</span>
             </div>
-            <div>
-              <h1 class="text-lg font-semibold text-white" x-text="pageTitle"></h1>
-              <p class="hidden text-xs text-slate-500 sm:block" data-i18n="header.tagline">Operational clarity, without the overhead.</p>
+            <div class="hidden sm:block">
+              <h1 class="text-sm font-semibold text-white" x-text="pageTitle"></h1>
+              <p class="telemetry-text mt-0.5 text-[9px] text-muted">FORGEOS / LOCAL / <span x-text="page.toUpperCase()"></span></p>
             </div>
           </div>
-          <div class="flex items-center gap-3">
-            <div class="flex items-center rounded-xl border border-slate-800 bg-slate-900/70 p-1 text-xs font-semibold">
-              <button @click="setLanguage('fa')" data-lang-label="fa" class="rounded-lg px-2 py-1 text-slate-500 transition hover:text-cyan-300">FA</button>
+          <button type="button" @click="openCommandPalette()" class="command-trigger" aria-label="Open command palette">
+            <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <span class="truncate text-xs">Navigate or enter a system command</span>
+            <span class="command-key">Ctrl K</span>
+          </button>
+          <div class="flex shrink-0 items-center gap-2">
+            <div class="hidden items-center rounded-md border border-[#3B4252] bg-[#13151A] p-1 text-[10px] font-semibold sm:flex">
+              <button @click="setLanguage('fa')" data-lang-label="fa" class="rounded-lg px-2 py-1 text-muted transition hover:text-cyan-300">FA</button>
               <button @click="setLanguage('en')" data-lang-label="en" class="rounded-lg px-2 py-1 text-cyan-300 transition hover:text-cyan-300">EN</button>
             </div>
-            <button @click="refreshCurrent()" class="rounded-xl border border-slate-800 bg-slate-900/70 p-2.5 text-slate-400 transition hover:border-cyan-400/30 hover:text-cyan-300" title="Refresh" data-i18n-attr="title:header.refresh">
+            <button @click="refreshCurrent()" class="grid h-9 w-9 place-items-center rounded-md border border-[#3B4252] bg-[#13151A] text-slate-400 hover:border-cyan-300 hover:text-cyan-200" title="Refresh" data-i18n-attr="title:header.refresh" aria-label="Refresh current workspace">
               <svg class="h-4 w-4" :class="loading ? 'animate-spin' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/>
               </svg>
             </button>
             <div x-show="currentUser" class="hidden text-right sm:block">
-              <p class="text-xs font-semibold text-white" x-text="currentUser?.username"></p>
-              <p class="text-[10px] text-cyan-300" x-text="currentUser?.role"></p>
+              <p class="text-[11px] font-semibold text-white" x-text="currentUser?.username"></p>
+              <p class="telemetry-text text-[9px] text-cyan-300" x-text="currentUser?.role"></p>
             </div>
-            <button @click="logout()" class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2.5 text-xs font-semibold text-slate-400 hover:text-rose-300" data-i18n="auth.logout">Logout</button>
-            <a href="/docs" target="_blank" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110">
-              <span data-i18n="header.api_docs">API Docs</span>
-            </a>
+            <button @click="logout()" class="hidden rounded-md border border-[#3B4252] bg-[#13151A] px-3 py-2 text-xs font-semibold text-slate-400 hover:text-rose-300 md:block" data-i18n="auth.logout">Logout</button>
           </div>
         </div>
-        <div class="flex gap-1 overflow-x-auto border-t border-slate-800/50 px-3 py-2 lg:hidden">
+        <div class="flex gap-1 overflow-x-auto border-t border-slate-800/50 py-2 lg:hidden">
           <template x-for="item in navigation" :key="item.id">
             <button x-show="!item.adminOnly || isAdmin" @click="navigate(item.id)" x-text="translated(item.labelKey, item.label)"
                     class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium"
-                    :class="page === item.id ? 'bg-cyan-400/10 text-cyan-300' : 'text-slate-500'"></button>
+                    :class="page === item.id ? 'bg-cyan-400/10 text-cyan-300' : 'text-muted'"></button>
           </template>
         </div>
       </header>
 
-      <main class="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main id="workspace-main" class="page-shell" tabindex="-1">
         <section x-show="page === 'dashboard'" x-transition.opacity>
-          <div class="mb-7 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <div>
-              <p class="text-sm font-medium text-cyan-400" data-i18n="dashboard.overline">OPERATIONS OVERVIEW</p>
-              <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="dashboard.title">Infrastructure at a glance</h2>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-cyan-300">GLOBAL TELEMETRY CONSOLE</p>
+              <h2 class="page-title">Network operations center</h2>
+              <p class="page-subtitle">Verified inventory, monitoring, and governance state from the current ForgeOS bounded context.</p>
             </div>
-            <p class="text-xs text-slate-500"><span data-i18n="dashboard.updated">Updated</span> <span x-text="lastUpdated"></span></p>
+            <div class="action-bar__actions">
+              <span class="status-chip status-glow--ok"><span class="h-1.5 w-1.5 rounded-full bg-emerald-300"></span> API HEALTHY</span>
+              <span class="status-chip">POLL 15S</span>
+              <span class="telemetry-text text-[10px] text-muted">SYNC <span x-text="lastUpdated"></span></span>
+            </div>
           </div>
 
-          <div x-show="loading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div x-show="loading" class="metric-grid" aria-label="Loading telemetry">
             <template x-for="index in 4" :key="index">
-              <div class="h-36 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-                <div class="h-4 w-24 rounded bg-slate-800"></div><div class="mt-7 h-8 w-16 rounded bg-slate-800"></div>
+              <div class="metric-card animate-pulse motion-reduce:animate-none">
+                <div class="h-3 w-24 rounded bg-[#2E3440]"></div>
+                <div class="mt-5 h-7 w-16 rounded bg-[#2E3440]"></div>
               </div>
             </template>
           </div>
 
-          <div x-show="!loading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <template x-for="card in kpiCards" :key="card.label">
-              <a @click.prevent="navigate(card.page)" href="#" class="card-glossy relative block overflow-hidden rounded-2xl p-5"
-                   :class="card.glow">
-                <div class="absolute -right-10 -top-10 h-28 w-28 rounded-full blur-3xl" :class="card.orb"></div>
-                <div class="relative flex items-start justify-between">
-                  <div>
-                    <p class="text-sm text-slate-400" x-text="card.label"></p>
-                    <p class="mt-3 text-3xl font-semibold tracking-tight text-white" x-text="card.value"></p>
-                    <p class="mt-2 text-xs text-slate-500" x-text="card.caption"></p>
-                  </div>
-                  <div class="rounded-xl p-2.5" :class="card.iconBg">
-                    <span class="block h-5 w-5" x-html="card.icon"></span>
-                  </div>
+          <div x-show="!loading" class="metric-grid">
+            <template x-for="metric in nocMetrics" :key="metric.label">
+              <button type="button" @click="navigate(metric.page)" class="metric-card text-left hover:border-cyan-300">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="metric-card__label" x-text="metric.label"></span>
+                  <span class="h-2 w-2 rounded-full" :class="metric.dot"></span>
                 </div>
-              </a>
+                <div class="metric-card__value" x-text="metric.value"></div>
+                <div class="metric-card__caption" x-text="metric.caption"></div>
+              </button>
             </template>
           </div>
 
-          <div class="mt-6 grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
-            <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-md">
-              <div class="flex items-center justify-between">
+          <div class="mt-3 grid gap-3 2xl:grid-cols-[minmax(0,1.65fr)_minmax(20rem,.7fr)]">
+            <section class="enterprise-panel overflow-hidden" aria-labelledby="topology-title">
+              <div class="enterprise-panel__header">
                 <div>
-                  <h3 class="font-semibold text-white">Warnings</h3>
-                  <p class="mt-1 text-xs text-slate-500">Items needing operational attention</p>
+                  <h3 id="topology-title" class="enterprise-panel__title">Monitoring Topology</h3>
+                  <p class="mt-1 text-[10px] text-muted">Hub-to-target reachability; not a discovered node-to-node graph.</p>
                 </div>
-                <span class="rounded-full px-2.5 py-1 text-xs font-semibold"
-                      :class="summary.warning_count ? 'bg-amber-400/10 text-amber-300' : 'bg-emerald-400/10 text-emerald-300'"
-                      x-text="summary.warning_count + ' open'"></span>
+                <button type="button" @click="navigate('monitoring')" class="btn--secondary">Open topology</button>
               </div>
-              <div class="mt-5 space-y-3">
-                <template x-for="warning in warningGroups" :key="warning.key">
-                  <button @click="navigate('assets')" class="flex w-full items-center gap-4 rounded-xl border border-slate-800/70 bg-slate-950/40 p-4 text-left transition hover:border-slate-700 hover:bg-slate-800/50">
-                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl" :class="warning.color">
-                      <span x-html="warning.icon" class="h-5 w-5"></span>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-slate-200" x-text="warning.title"></p>
-                      <p class="mt-1 truncate text-xs text-slate-500" x-text="warning.detail"></p>
-                    </div>
-                    <span class="text-lg font-semibold text-white" x-text="warning.count"></span>
-                  </button>
-                </template>
-                <div x-show="!summary.warning_count" class="rounded-xl border border-emerald-400/10 bg-emerald-400/5 p-5 text-center text-sm text-emerald-300">
-                  All systems look clear.
+              <div class="topology-viewport">
+                <svg viewBox="0 0 800 360" class="h-full min-h-[23rem] w-full" role="img"
+                     :aria-label="`${targets.length} monitored targets connected to the ForgeOS control node`">
+                  <g aria-hidden="true">
+                    <template x-for="node in topologyNodes" :key="`edge-${node.id}`">
+                      <line class="topology-edge" x1="400" y1="180" :x2="node.x" :y2="node.y"></line>
+                    </template>
+                  </g>
+                  <g class="topology-node topology-node--pass" tabindex="0" aria-label="ForgeOS local control node">
+                    <circle cx="400" cy="180" r="34"></circle>
+                    <text x="400" y="176" text-anchor="middle">FORGEOS</text>
+                    <text x="400" y="192" text-anchor="middle">CONTROL</text>
+                  </g>
+                  <template x-for="node in topologyNodes" :key="node.id">
+                    <g class="topology-node" :class="topologyNodeClass(node.status)" tabindex="0"
+                       @click="openTopologyTarget(node)" @keydown.enter.prevent="openTopologyTarget(node)"
+                       :aria-label="`${node.name}, ${node.status}, ${node.latency}`">
+                      <circle :cx="node.x" :cy="node.y" r="24"></circle>
+                      <text :x="node.x" :y="node.y + 4" text-anchor="middle" x-text="node.shortName"></text>
+                      <text :x="node.x" :y="node.y + 42" text-anchor="middle" x-text="node.latency"></text>
+                    </g>
+                  </template>
+                  <text x="400" y="330" text-anchor="middle" fill="#697386" font-family="JetBrains Mono" font-size="10"
+                        x-show="!topologyNodes.length">NO MONITORED TARGETS CONFIGURED</text>
+                </svg>
+              </div>
+              <div class="border-t border-[#2E3440] p-3">
+                <div class="flex flex-wrap gap-3 telemetry-text text-[9px] text-muted">
+                  <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-300"></span>PASS</span>
+                  <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-amber-300"></span>WARNING</span>
+                  <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-rose-400"></span>FAILED</span>
+                  <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-slate-500"></span>UNKNOWN</span>
                 </div>
               </div>
-            </div>
+            </section>
 
-            <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-md">
-              <h3 class="font-semibold text-white">Recent Activity</h3>
-              <p class="mt-1 text-xs text-slate-500">Latest assignments and imports</p>
-              <div class="mt-5 space-y-1">
-                <template x-for="(activity, index) in summary.recent_activity" :key="activity.kind + activity.timestamp + index">
-                  <div class="flex gap-3 rounded-xl px-2 py-3 transition hover:bg-slate-800/40">
-                    <div class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-                         :class="activity.kind === 'snapshot' ? 'bg-cyan-400 shadow-[0_0_10px_#06b6d4]' : 'bg-emerald-400 shadow-[0_0_10px_#10b981]'"></div>
-                    <div class="min-w-0 flex-1">
-                      <p class="truncate text-sm font-medium text-slate-200" x-text="activity.title"></p>
-                      <p class="mt-0.5 truncate text-xs text-slate-500" x-text="activity.detail"></p>
-                    </div>
-                    <span class="shrink-0 text-[11px] text-slate-600" x-text="relativeTime(activity.timestamp)"></span>
+            <div class="grid min-w-0 gap-3">
+              <section class="enterprise-panel" aria-labelledby="alerts-title">
+                <div class="enterprise-panel__header">
+                  <h3 id="alerts-title" class="enterprise-panel__title">Operational Exceptions</h3>
+                  <span class="status-chip" x-text="`${operationalExceptionCount} OPEN`"></span>
+                </div>
+                <div class="max-h-[18rem] overflow-y-auto p-2">
+                  <template x-for="warning in warningGroups" :key="warning.key">
+                    <button @click="navigate(warning.page || 'assets')" class="flex min-h-12 w-full items-center gap-3 border-b border-[#2E3440] px-2 py-2 text-left last:border-0 hover:bg-[#1D2129]">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md" :class="warning.color">
+                        <span x-html="warning.icon" class="h-4 w-4"></span>
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block truncate text-xs font-medium text-slate-200" x-text="warning.title"></span>
+                        <span class="mt-0.5 block truncate text-[10px] text-muted" x-text="warning.detail"></span>
+                      </span>
+                      <span class="telemetry-text text-xs text-white" x-text="warning.count"></span>
+                    </button>
+                  </template>
+                  <div x-show="!operationalExceptionCount" class="p-6 text-center">
+                    <p class="telemetry-text text-xs text-emerald-300">NO OPEN EXCEPTIONS</p>
+                    <p class="mt-2 text-[11px] text-muted">Current inventory and target states report no actionable conditions.</p>
                   </div>
-                </template>
-                <div x-show="!summary.recent_activity.length" class="py-12 text-center text-sm text-slate-600">Activity appears here as your team works.</div>
-              </div>
+                </div>
+              </section>
+
+              <section class="enterprise-panel" aria-labelledby="events-title">
+                <div class="enterprise-panel__header">
+                  <h3 id="events-title" class="enterprise-panel__title">Latest Probe Events</h3>
+                  <button type="button" @click="navigate('monitoring')" class="text-[10px] text-cyan-300 hover:text-cyan-100">VIEW ALL</button>
+                </div>
+                <div class="max-h-[15rem] overflow-y-auto p-2">
+                  <template x-for="event in monitoringHistory.slice(0, 8)" :key="event.id">
+                    <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-[#2E3440] px-2 py-2 last:border-0">
+                      <span class="h-2 w-2 rounded-full" :class="monitoringDotClass(event.status)"></span>
+                      <div class="min-w-0">
+                        <p class="truncate text-[11px] text-slate-300" x-text="targetName(event.target_id)"></p>
+                        <p class="telemetry-text truncate text-[9px] text-muted" x-text="event.latency_ms != null ? `${event.latency_ms.toFixed(1)} MS` : event.status"></p>
+                      </div>
+                      <time class="telemetry-text text-[9px] text-muted" x-text="relativeTime(event.timestamp)"></time>
+                    </div>
+                  </template>
+                  <p x-show="!monitoringHistory.length" class="p-6 text-center text-[11px] text-muted">No monitoring events have been persisted.</p>
+                </div>
+              </section>
             </div>
+          </div>
+
+          <div class="mt-3 grid gap-3 xl:grid-cols-2">
+            <section class="enterprise-panel">
+              <div class="enterprise-panel__header">
+                <h3 class="enterprise-panel__title">Agent Execution Plane</h3>
+                <span class="status-chip">CONTRACT GAP</span>
+              </div>
+              <div class="p-4">
+                <div class="architecture-gap p-3 text-xs">
+                  AgentOS queue, run-state, idempotency, and token/cost interfaces are not present in this repository.
+                </div>
+                <div class="mt-3 grid grid-cols-3 gap-2">
+                  <div class="rounded-md border border-[#2E3440] bg-[#13151A] p-3"><p class="metric-card__label">Queued</p><p class="telemetry-text mt-2 text-lg text-muted">N/A</p></div>
+                  <div class="rounded-md border border-[#2E3440] bg-[#13151A] p-3"><p class="metric-card__label">Running</p><p class="telemetry-text mt-2 text-lg text-muted">N/A</p></div>
+                  <div class="rounded-md border border-[#2E3440] bg-[#13151A] p-3"><p class="metric-card__label">Token Cost</p><p class="telemetry-text mt-2 text-lg text-muted">N/A</p></div>
+                </div>
+                <button type="button" @click="navigate('execution')" class="btn--secondary mt-3">Open AI context workspace</button>
+              </div>
+            </section>
+
+            <section class="enterprise-panel">
+              <div class="enterprise-panel__header">
+                <h3 class="enterprise-panel__title">Security &amp; Governance</h3>
+                <span class="status-chip" x-text="`${users.length || (isAdmin ? 0 : '—')} USERS`"></span>
+              </div>
+              <div class="grid gap-2 p-4 sm:grid-cols-3">
+                <div class="rounded-md border border-[#2E3440] bg-[#13151A] p-3"><p class="metric-card__label">Role Model</p><p class="telemetry-text mt-2 text-xs text-white">ADMIN / VIEW</p></div>
+                <div class="rounded-md border border-[#2E3440] bg-[#13151A] p-3"><p class="metric-card__label">Audit Events</p><p class="telemetry-text mt-2 text-xs text-amber-300">GAP</p></div>
+                <div class="rounded-md border border-[#2E3440] bg-[#13151A] p-3"><p class="metric-card__label">Tenant Isolation</p><p class="telemetry-text mt-2 text-xs text-amber-300">GAP</p></div>
+              </div>
+              <div class="px-4 pb-4">
+                <button type="button" @click="navigate('security')" class="btn--secondary">Open governance workspace</button>
+              </div>
+            </section>
           </div>
         </section>
 
         <section x-show="page === 'assets'" x-cloak x-transition.opacity id="assets">
-          <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm font-medium text-cyan-400" data-i18n="assets.overline">ASSET REGISTER</p>
-              <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="assets.title">Managed infrastructure</h2>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-cyan-400" data-i18n="assets.overline">ASSET REGISTER</p>
+              <h2 class="page-title" data-i18n="assets.title">Managed infrastructure</h2>
             </div>
-            <div class="flex flex-wrap gap-3">
-              <button x-show="isAdmin" @click="openNewAsset()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110">
+            <div class="action-bar__actions">
+              <button x-show="isAdmin" @click="openNewAsset()" class="btn--primary">
                 <span data-i18n="assets.new">+ New Asset</span>
               </button>
             </div>
           </div>
-          <div class="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-md">
-            <div class="border-b border-slate-800/80 p-4">
-              <label class="relative block max-w-md">
-                <svg class="absolute left-3 top-3 h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+           <div class="table-shell">
+             <div class="table-shell__header flex flex-wrap items-center justify-between gap-3 p-3">
+               <label class="relative block w-full max-w-md">
+                 <span class="sr-only">Search asset inventory</span>
+                 <svg class="absolute left-3 top-2.5 h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
                 <input x-model="assetSearch" type="search" placeholder="Search tag, serial, model, location..."
-                       class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10">
+                       class="h-9 w-full rounded-md border border-[#3B4252] bg-[#0D0E11] py-2 pl-10 pr-4 text-sm text-white outline-none placeholder:text-muted focus:border-cyan-300">
               </label>
+              <div class="telemetry-text flex items-center gap-3 text-[10px] text-muted">
+                <span x-text="`${filteredAssets.length} VISIBLE`"></span>
+                <span x-text="`${selectedAssetIds.length} SELECTED`"></span>
+                <span>SHIFT + SORT FOR MULTI-COLUMN</span>
+              </div>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-sm">
-                <thead class="border-b border-slate-800/80 bg-slate-950/30 text-xs uppercase tracking-wider text-slate-500">
-                  <tr><th class="px-5 py-4">Asset</th><th class="px-5 py-4">Type</th><th class="px-5 py-4">Serial</th><th class="px-5 py-4">Purchase</th><th class="px-5 py-4">Location</th><th class="px-5 py-4">Status</th><th class="px-5 py-4">Invoice</th><th class="px-5 py-4">Actions</th></tr>
+                <thead class="border-b border-slate-800/80 bg-slate-950/30 text-xs uppercase tracking-wider text-muted">
+                  <tr>
+                    <th class="w-10 px-3 py-3">
+                      <input type="checkbox" :checked="allVisibleAssetsSelected" @change="toggleAllVisibleAssets($event.target.checked)" aria-label="Select all visible assets">
+                    </th>
+                    <template x-for="column in assetTableColumns" :key="column.key">
+                      <th class="px-4 py-3" :aria-sort="assetAriaSort(column.key)">
+                        <button type="button" @click="sortAssets(column.key, $event.shiftKey)" class="telemetry-text inline-flex items-center gap-1 text-[10px] hover:text-cyan-200">
+                          <span x-text="column.label"></span>
+                          <span x-text="assetSortIndicator(column.key)" aria-hidden="true"></span>
+                        </button>
+                      </th>
+                    </template>
+                    <th class="px-4 py-3">Invoice</th>
+                    <th class="px-4 py-3">Actions</th>
+                  </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
                   <template x-for="asset in filteredAssets" :key="asset.id">
-                    <tr class="transition hover:bg-cyan-400/[.035]">
-                      <td class="px-5 py-4">
+                    <tr class="transition hover:bg-cyan-400/[.035]" :class="selectedAssetIds.includes(asset.id) ? 'bg-cyan-300/[.045]' : ''">
+                      <td class="px-3 py-3">
+                        <input type="checkbox" :checked="selectedAssetIds.includes(asset.id)" @change="toggleAssetSelection(asset.id)" :aria-label="`Select ${asset.asset_tag || 'asset'}`">
+                      </td>
+                      <td class="px-4 py-3">
                         <p class="font-semibold text-white" x-text="asset.asset_tag"></p>
-                        <p class="mt-1 text-xs text-slate-500" x-text="[asset.manufacturer || asset.brand, asset.model].filter(Boolean).join(' ') || 'Unspecified model'"></p>
-                        <p class="mt-1 text-[11px] text-slate-600" x-text="[asset.cpu_name, asset.ram_mb ? `${Math.round(asset.ram_mb / 1024)} GB RAM` : null].filter(Boolean).join(' · ')"></p>
+                        <p class="mt-1 text-xs text-secondary" x-text="[asset.manufacturer || asset.brand, asset.model].filter(Boolean).join(' ') || 'Unspecified model'"></p>
+                        <p class="mt-1 text-[11px] text-secondary" x-text="[asset.cpu_name, asset.ram_mb ? `${Math.round(asset.ram_mb / 1024)} GB RAM` : null].filter(Boolean).join(' · ')"></p>
                       </td>
-                      <td class="px-5 py-4 text-slate-300" x-text="asset.type"></td>
-                      <td class="px-5 py-4 font-mono text-xs" :class="asset.serial_number ? 'text-slate-400' : 'text-amber-300'" x-text="asset.serial_number || 'Missing'"></td>
-                      <td class="px-5 py-4">
+                      <td class="px-4 py-3 text-slate-300" x-text="asset.type"></td>
+                      <td class="telemetry-text px-4 py-3 text-xs" :class="asset.serial_number ? 'text-slate-400' : 'text-amber-300'" x-text="asset.serial_number || 'Missing'"></td>
+                      <td class="px-4 py-3">
                         <p class="text-sm text-slate-300" x-text="asset.purchase_price != null ? Number(asset.purchase_price).toLocaleString() : '—'"></p>
-                        <p class="mt-1 text-xs text-slate-600" x-text="asset.purchase_date ? toJalali(asset.purchase_date) : 'No date'"></p>
+                        <p class="mt-1 text-xs text-secondary" x-text="asset.purchase_date ? toJalali(asset.purchase_date) : 'No date'"></p>
                       </td>
-                      <td class="px-5 py-4 text-slate-400" x-text="asset.location || '—'"></td>
-                      <td class="px-5 py-4">
+                      <td class="px-4 py-3 text-slate-400" x-text="asset.location || '—'"></td>
+                      <td class="px-4 py-3">
                         <span x-show="(asset.status || '').trim()" class="rounded-full px-2.5 py-1 text-xs font-medium capitalize" :class="statusClass(asset.status)" x-text="(asset.status || '').trim()"></span>
                         <span x-show="!(asset.status || '').trim()" class="rounded-full border border-slate-700 bg-slate-800/70 px-2.5 py-1 text-xs font-medium text-slate-400">Unspecified</span>
                       </td>
-                      <td class="px-5 py-4">
+                      <td class="px-4 py-3">
                         <button x-show="asset.invoice_path" @click="downloadInvoice(asset)" class="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-2.5 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20">
                           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z"/><path d="M14 3v6h6"/></svg>
                           View
                         </button>
-                        <span x-show="!asset.invoice_path" class="text-xs text-slate-600">—</span>
+                        <span x-show="!asset.invoice_path" class="text-xs text-secondary">—</span>
                       </td>
-                      <td class="px-5 py-4">
+                      <td class="px-4 py-3">
                         <div x-show="isAdmin" class="flex items-center gap-2">
                           <button type="button" @click="editAsset(asset)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-400/20">Edit</button>
                           <button type="button" @click="deleteAsset(asset)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-400/20">Remove</button>
@@ -273,33 +390,43 @@
                   </template>
                 </tbody>
               </table>
-              <div x-show="!filteredAssets.length && !loading" class="px-6 py-20 text-center">
-                <div class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-800 text-slate-500">
+              <div x-show="!filteredAssets.length && !loading" class="empty-state empty-state--loose text-center">
+                <div class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-800 text-secondary">
                   <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/></svg>
                 </div>
                 <p class="mt-4 font-medium text-slate-300" data-i18n="assets.no_assets">No assets found</p>
-                <p class="mt-1 text-sm text-slate-600" data-i18n="assets.no_assets_help">Try another search or add your first asset.</p>
+                <p class="mt-1 text-sm text-secondary" data-i18n="assets.no_assets_help">Try another search or add your first asset.</p>
               </div>
             </div>
+          </div>
+          <div x-show="selectedAssetIds.length" x-cloak class="bulk-drawer" role="region" aria-label="Asset bulk actions">
+            <div>
+              <p class="telemetry-text text-[10px] text-cyan-300" x-text="`${selectedAssetIds.length} ASSETS SELECTED`"></p>
+              <p class="text-[10px] text-muted">Mutation endpoints are single-record; safe client export is available.</p>
+            </div>
+            <button type="button" @click="exportSelectedAssets()" class="btn--secondary">Export JSON</button>
+            <button type="button" @click="selectedAssetIds = []" class="btn--ghost text-slate-300">Clear</button>
           </div>
         </section>
 
         <section x-show="page === 'people'" x-cloak x-transition.opacity>
-          <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm font-medium text-emerald-400">PEOPLE DIRECTORY</p>
-              <h2 class="mt-1 text-2xl font-semibold text-white">Asset custodians</h2>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-emerald-400">PEOPLE DIRECTORY</p>
+              <h2 class="page-title">Asset custodians</h2>
             </div>
-            <button x-show="isAdmin" @click="openNewPerson()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-emerald transition hover:brightness-110">+ New Person</button>
+            <div class="action-bar__actions">
+              <button x-show="isAdmin" @click="openNewPerson()" class="btn--primary">+ New Person</button>
+            </div>
           </div>
           <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <template x-for="person in people" :key="person.id">
-              <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-md transition hover:border-emerald-400/20">
+              <div class="surface card--interactive p-5">
                 <div class="flex items-center gap-4">
-                  <div class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 text-sm font-bold text-emerald-300" x-text="initials(person.full_name)"></div>
+                  <div class="grid h-12 w-12 place-items-center rounded-md border border-emerald-300/25 bg-[#1D2129] text-sm font-bold text-emerald-300" x-text="initials(person.full_name)"></div>
                   <div class="min-w-0">
                     <p class="truncate font-semibold text-white" x-text="person.full_name"></p>
-                    <p class="mt-1 text-xs text-slate-500" x-text="person.org_unit || 'No org unit'"></p>
+                    <p class="mt-1 text-xs text-secondary" x-text="person.org_unit || 'No org unit'"></p>
                   </div>
                 </div>
                 <div class="mt-5 space-y-2 border-t border-slate-800/70 pt-4 text-sm text-slate-400">
@@ -313,43 +440,186 @@
               </div>
             </template>
           </div>
-          <div x-show="!people.length && !loading" class="empty-state rounded-2xl px-6 py-16 text-center">
-            <div class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-800/80 text-slate-500">
+          <div x-show="!people.length && !loading" class="empty-state empty-state--loose text-center">
+            <div class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-800/80 text-secondary">
               <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M16 4.5a4 4 0 0 1 0 7.5M18 15a6 6 0 0 1 3.5 6"/></svg>
             </div>
             <p class="mt-4 font-medium text-slate-300">No custodians registered</p>
-            <p class="mt-2 text-sm text-slate-600">Add a person to begin assigning and tracking asset ownership.</p>
+            <p class="mt-2 text-sm text-secondary">Add a person to begin assigning and tracking asset ownership.</p>
           </div>
         </section>
 
+        <section x-show="page === 'execution'" x-cloak x-transition.opacity>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-cyan-300">AGENT EXECUTION PLANE</p>
+              <h2 class="page-title">AI context and validation workspace</h2>
+              <p class="page-subtitle">Asset-scoped intelligence using the implemented AI context endpoint. AgentOS run control remains isolated until a formal contract exists.</p>
+            </div>
+            <div class="action-bar__actions">
+              <span class="status-chip">HUMAN VALIDATION REQUIRED</span>
+            </div>
+          </div>
+
+          <div class="architecture-gap mb-3 p-3 text-xs">
+            <strong>Architecture Gap:</strong> ForgeOS has no AgentOS queue, prompt execution, tool-call, token, cost, cancellation, or idempotency contract. Controls that would mutate an agent runtime are intentionally unavailable.
+          </div>
+
+          <div class="grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(21rem,.75fr)]">
+            <section class="enterprise-panel">
+              <div class="enterprise-panel__header">
+                <h3 class="enterprise-panel__title">Prompt &amp; Run Control</h3>
+                <span class="status-chip">READ ONLY</span>
+              </div>
+              <div class="p-4">
+                <label class="block">
+                  <span class="metric-card__label">Natural-language instruction</span>
+                  <textarea x-model="agentPrompt" rows="8" disabled
+                            class="mt-2 w-full rounded-md border border-[#3B4252] bg-[#0D0E11] p-3 font-mono text-xs text-muted opacity-70"
+                            placeholder="AgentOS prompt execution becomes available after the runtime contract is defined."></textarea>
+                </label>
+                <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div class="rounded-md border border-[#2E3440] bg-[#13151A] p-3"><p class="metric-card__label">Run ID</p><p class="telemetry-text mt-2 text-xs text-muted">NOT ISSUED</p></div>
+                  <div class="rounded-md border border-[#2E3440] bg-[#13151A] p-3"><p class="metric-card__label">Token / Cost</p><p class="telemetry-text mt-2 text-xs text-muted">NOT REPORTED</p></div>
+                  <div class="rounded-md border border-[#2E3440] bg-[#13151A] p-3"><p class="metric-card__label">Idempotency</p><p class="telemetry-text mt-2 text-xs text-muted">UNDEFINED</p></div>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" disabled class="btn--primary" title="Requires AgentOS execution contract">Start validated run</button>
+                  <button type="button" disabled class="btn--secondary" title="Requires AgentOS cancellation contract">Cancel run</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="enterprise-panel">
+              <div class="enterprise-panel__header">
+                <h3 class="enterprise-panel__title">Human Validation Gate</h3>
+                <span class="status-chip status-glow--ok">ENFORCED IN UX</span>
+              </div>
+              <div class="space-y-3 p-4 text-xs">
+                <label class="flex min-h-11 items-center gap-3 rounded-md border border-[#3B4252] bg-[#13151A] px-3">
+                  <input type="checkbox" checked disabled>
+                  <span><strong class="text-slate-200">Context review</strong><span class="block text-[10px] text-muted">Operator confirms asset and monitoring scope.</span></span>
+                </label>
+                <label class="flex min-h-11 items-center gap-3 rounded-md border border-[#3B4252] bg-[#13151A] px-3">
+                  <input type="checkbox" disabled>
+                  <span><strong class="text-slate-200">Action approval</strong><span class="block text-[10px] text-muted">Requires backend policy and approval event schema.</span></span>
+                </label>
+                <label class="flex min-h-11 items-center gap-3 rounded-md border border-[#3B4252] bg-[#13151A] px-3">
+                  <input type="checkbox" disabled>
+                  <span><strong class="text-slate-200">Rollback evidence</strong><span class="block text-[10px] text-muted">Requires reversible action and audit contracts.</span></span>
+                </label>
+              </div>
+            </section>
+          </div>
+
+          <section class="enterprise-panel mt-3">
+            <div class="enterprise-panel__header">
+              <div>
+                <h3 class="enterprise-panel__title">Implemented Asset Intelligence</h3>
+                <p class="mt-1 text-[10px] text-muted">Calls GET /api/v1/assets/{asset_id}/ai_insights.</p>
+              </div>
+              <span class="status-chip">EXISTING CONTRACT</span>
+            </div>
+            <div class="grid gap-3 p-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+              <div>
+                <label class="block">
+                  <span class="metric-card__label">Context asset</span>
+                  <select x-model="selectedAiAssetId" class="mt-2 h-10 w-full rounded-md border border-[#3B4252] bg-[#0D0E11] px-3 text-sm text-white">
+                    <option value="">Select an asset</option>
+                    <template x-for="asset in assets" :key="asset.id">
+                      <option :value="asset.id" x-text="`${asset.asset_tag || `Asset ${asset.id}`} · ${asset.hostname || asset.model || 'No identity'}`"></option>
+                    </template>
+                  </select>
+                </label>
+                <button type="button" @click="loadAssetInsight()" :disabled="!selectedAiAssetId || aiLoading" class="btn--primary mt-3 w-full"
+                        x-text="aiLoading ? 'Loading context…' : 'Inspect asset context'"></button>
+                <p class="mt-3 text-[10px] leading-4 text-muted">The current service returns deterministic structured context unless an application-provided AI backend is enabled.</p>
+              </div>
+              <div class="min-h-56 rounded-md border border-[#3B4252] bg-[#0D0E11] p-4">
+                <p x-show="!aiInsight && !aiLoading" class="text-xs text-muted">Select an asset to inspect the implemented context envelope.</p>
+                <div x-show="aiInsight" class="space-y-3">
+                  <div>
+                    <p class="metric-card__label">Summary</p>
+                    <p class="mt-2 text-sm text-slate-200" x-text="aiInsight?.summary"></p>
+                  </div>
+                  <div>
+                    <p class="metric-card__label">Warnings</p>
+                    <p class="telemetry-text mt-2 text-xs" :class="aiInsight?.warnings?.length ? 'text-amber-300' : 'text-emerald-300'"
+                       x-text="aiInsight?.warnings?.length ? aiInsight.warnings.join(' · ') : 'NONE REPORTED'"></p>
+                  </div>
+                  <div>
+                    <p class="metric-card__label">Context Envelope</p>
+                    <pre class="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-5 text-secondary" x-text="JSON.stringify(aiInsight?.context || {}, null, 2)"></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+
         <section x-show="page === 'monitoring'" x-cloak x-transition.opacity>
-          <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p class="text-sm font-medium text-cyan-400" data-i18n="monitoring.overline">OPERATIONS MONITORING</p>
-              <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="monitoring.title">Website and network health</h2>
-              <p class="mt-2 text-sm text-slate-500" data-i18n="monitoring.help">Authenticated target status and recent check history.</p>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-cyan-300">NETWORK / TOPOLOGY ENGINE</p>
+              <h2 class="page-title">Reachability and latency topology</h2>
+              <p class="page-subtitle">Current monitored endpoints rendered as a control-node topology with an accessible table fallback and retained probe history.</p>
             </div>
-            <div class="flex gap-2">
-              <button @click="refreshMonitoring(true)" :disabled="monitoringLoading" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 disabled:opacity-50" data-i18n="monitoring.refresh">Refresh</button>
-              <button x-show="isAdmin" @click="openTargetForm()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="monitoring.add">Add Target</button>
+            <div class="action-bar__actions">
+              <button @click="refreshMonitoring(true)" :disabled="monitoringLoading" class="btn--secondary" data-i18n="monitoring.refresh">Refresh</button>
+              <button x-show="isAdmin" @click="openTargetForm()" class="btn--primary" data-i18n="monitoring.add">Add Target</button>
             </div>
           </div>
 
-          <div x-show="monitoringError" class="mb-5 rounded-xl border border-rose-400/20 bg-rose-400/5 p-4 text-sm text-rose-300" x-text="monitoringError"></div>
-          <div x-show="monitoringLoading" class="grid gap-4 md:grid-cols-3">
-            <template x-for="index in 3" :key="index"><div class="h-28 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60"></div></template>
-          </div>
+          <div x-show="monitoringError" role="alert" class="mb-3 rounded-md border border-rose-400/30 bg-rose-400/5 p-3 text-sm text-rose-300" x-text="monitoringError"></div>
 
-          <div x-show="!monitoringLoading" class="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section class="enterprise-panel mb-3 overflow-hidden" aria-labelledby="network-map-title">
+            <div class="enterprise-panel__header">
+              <div>
+                <h3 id="network-map-title" class="enterprise-panel__title">Interactive Reachability Map</h3>
+                <p class="mt-1 text-[10px] text-muted">SVG mode supports the current small topology; use Canvas with clustering above 100 nodes.</p>
+              </div>
+              <span class="status-chip" x-text="`${topologyNodes.length} RENDERED`"></span>
+            </div>
+            <div class="topology-viewport">
+              <svg viewBox="0 0 800 360" class="h-full min-h-[23rem] w-full" role="img"
+                   :aria-label="`${targets.length} monitored endpoints in the ForgeOS reachability map`">
+                <g aria-hidden="true">
+                  <template x-for="node in topologyNodes" :key="`map-edge-${node.id}`">
+                    <line class="topology-edge" x1="400" y1="180" :x2="node.x" :y2="node.y"></line>
+                  </template>
+                </g>
+                <g class="topology-node topology-node--pass" tabindex="0" aria-label="ForgeOS local control node">
+                  <circle cx="400" cy="180" r="34"></circle>
+                  <text x="400" y="176" text-anchor="middle">FORGEOS</text>
+                  <text x="400" y="192" text-anchor="middle">CONTROL</text>
+                </g>
+                <template x-for="node in topologyNodes" :key="`map-node-${node.id}`">
+                  <g class="topology-node" :class="topologyNodeClass(node.status)" tabindex="0"
+                     @click="loadTargetLogs(node)" @keydown.enter.prevent="loadTargetLogs(node)"
+                     :aria-label="`${node.name}, ${node.status}, ${node.latency}`">
+                    <circle :cx="node.x" :cy="node.y" r="24"></circle>
+                    <text :x="node.x" :y="node.y + 4" text-anchor="middle" x-text="node.shortName"></text>
+                    <text :x="node.x" :y="node.y + 42" text-anchor="middle" x-text="node.latency"></text>
+                  </g>
+                </template>
+              </svg>
+            </div>
+          </section>
+
+          <div class="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <template x-for="item in monitoringSummary" :key="item.label">
-              <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
-                <p class="text-xs uppercase tracking-wider text-slate-500" x-text="item.label"></p>
-                <p class="mt-2 text-2xl font-semibold" :class="item.color" x-text="item.value"></p>
+               <div class="surface p-4">
+                <div class="flex items-center gap-2">
+                  <span class="h-2 w-2 rounded-full" :class="item.dot" x-show="item.dot"></span>
+                  <p class="text-[11px] font-medium uppercase tracking-wider text-muted" x-text="item.label"></p>
+                </div>
+                <p class="mt-2 text-xl font-semibold tracking-tight text-white" x-text="item.value"></p>
+                <p class="mt-1 text-[11px] text-secondary" x-text="item.caption"></p>
               </div>
             </template>
           </div>
 
-          <form x-show="showTargetForm && isAdmin" @submit.prevent="saveTarget()" class="mb-6 grid gap-4 rounded-2xl border border-cyan-400/20 bg-slate-900/75 p-5 md:grid-cols-2">
+          <form x-show="showTargetForm && isAdmin" @submit.prevent="saveTarget()" class="surface mb-6 grid gap-4 p-5 md:grid-cols-2" style="border-color: rgba(6,182,212,0.2);">
             <input x-model="targetForm.name" required placeholder="Target name" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white outline-none focus:border-cyan-500/50">
             <select x-model="targetForm.target_type" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white">
               <option value="website">Website</option><option value="network">Network host</option>
@@ -360,63 +630,224 @@
             <label class="flex items-center gap-2 text-sm text-slate-400"><input x-model="targetForm.enabled" type="checkbox"> <span data-i18n="monitoring.enabled">Enabled</span></label>
             <div class="flex justify-end gap-2 md:col-span-2">
               <button type="button" @click="showTargetForm = false" class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancel</button>
-              <button :disabled="monitoringSaving" class="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50" x-text="monitoringSaving ? 'Saving…' : 'Save Target'"></button>
+              <button :disabled="monitoringSaving" class="btn--primary" x-text="monitoringSaving ? 'Saving…' : 'Save Target'"></button>
             </div>
           </form>
 
-          <div x-show="!monitoringLoading && !targets.length" class="rounded-2xl border border-slate-800 bg-slate-900/60 px-6 py-16 text-center">
-            <p class="font-medium text-slate-300" data-i18n="monitoring.empty">No monitoring targets configured.</p>
-            <p class="mt-2 text-sm text-slate-600" data-i18n="monitoring.empty_help">An administrator can add a website or network host.</p>
-          </div>
-          <div x-show="!monitoringLoading && targets.length" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <template x-for="target in targets" :key="target.id">
-              <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
-                <div class="flex items-start justify-between gap-3">
-                  <div><p class="font-semibold text-white" x-text="target.name"></p><p class="mt-1 text-xs text-slate-500" x-text="target.ip_or_host"></p></div>
-                  <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="monitoringStatusClass(target.status)" x-text="target.status"></span>
-                </div>
-                <div class="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-400">
-                  <span class="capitalize" x-text="target.target_type"></span><span x-text="target.last_latency_ms != null ? `${target.last_latency_ms.toFixed(1)} ms` : 'Not checked'"></span>
-                  <span x-text="target.enabled ? 'Enabled' : 'Disabled'"></span><span x-text="target.last_checked_at ? relativeTime(target.last_checked_at) : 'Never checked'"></span>
-                </div>
-                <p x-show="target.last_error" class="mt-3 break-words text-xs text-rose-300" x-text="target.last_error"></p>
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <button x-show="isAdmin" @click="checkTarget(target.id)" class="rounded-lg bg-cyan-400/10 px-3 py-2 text-xs font-medium text-cyan-300" data-i18n="monitoring.check">Check now</button>
-                  <button @click="loadTargetLogs(target)" class="rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-slate-300" data-i18n="monitoring.history">History</button>
-                  <button x-show="isAdmin" @click="editTarget(target)" class="rounded-lg bg-amber-400/10 px-3 py-2 text-xs font-medium text-amber-300" data-i18n="monitoring.edit">Edit</button>
-                  <button x-show="isAdmin" @click="deleteTarget(target)" class="rounded-lg bg-rose-400/10 px-3 py-2 text-xs font-medium text-rose-300" data-i18n="monitoring.delete">Delete</button>
-                </div>
+          <div class="table-shell">
+            <div class="table-shell__header p-4">
+              <label class="relative block max-w-md">
+                <svg class="absolute left-3 top-3 h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input x-model="targetSearch" type="search" placeholder="Search targets by name or address..." class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-secondary focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10">
+              </label>
+            </div>
+            <div x-show="monitoringLoading" class="p-4">
+              <div class="flex items-center gap-4 border-b border-slate-800/60 px-5 py-3">
+                <div class="h-4 w-32 animate-pulse rounded bg-slate-800"></div>
+                <div class="h-4 w-40 animate-pulse rounded bg-slate-800"></div>
+                <div class="h-4 w-20 animate-pulse rounded bg-slate-800"></div>
+                <div class="h-4 w-16 animate-pulse rounded bg-slate-800"></div>
+                <div class="h-4 w-24 animate-pulse rounded bg-slate-800"></div>
+                <div class="h-4 w-24 animate-pulse rounded bg-slate-800"></div>
+                <div class="h-4 w-20 animate-pulse rounded bg-slate-800"></div>
               </div>
-            </template>
+              <template x-for="index in 3" :key="index">
+                <div class="flex items-center gap-4 border-b border-slate-800/40 px-5 py-4">
+                  <div class="h-4 w-32 animate-pulse rounded bg-slate-800"></div>
+                  <div class="h-4 w-40 animate-pulse rounded bg-slate-800"></div>
+                  <div class="h-4 w-20 animate-pulse rounded bg-slate-800"></div>
+                  <div class="h-4 w-16 animate-pulse rounded bg-slate-800"></div>
+                  <div class="h-4 w-24 animate-pulse rounded bg-slate-800"></div>
+                  <div class="h-4 w-24 animate-pulse rounded bg-slate-800"></div>
+                  <div class="h-4 w-20 animate-pulse rounded bg-slate-800"></div>
+                </div>
+              </template>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="border-b border-slate-800/80 bg-slate-950/30 text-xs uppercase tracking-wider text-muted">
+                  <tr>
+                    <th class="px-5 py-4">Name</th>
+                    <th class="px-5 py-4">Target</th>
+                    <th class="px-5 py-4">Type</th>
+                    <th class="px-5 py-4">Status</th>
+                    <th class="px-5 py-4 text-right">Latency</th>
+                    <th class="px-5 py-4">Last Check</th>
+                    <th class="px-5 py-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                  <template x-for="target in filteredTargets" :key="target.id">
+                    <tr class="transition hover:bg-cyan-400/[.035]">
+                      <td class="px-5 py-4">
+                        <p class="font-semibold text-white" x-text="target.name"></p>
+                        <p x-show="target.last_error" class="mt-1 truncate text-xs text-rose-300" x-text="target.last_error"></p>
+                      </td>
+                      <td class="px-5 py-4">
+                        <p class="truncate font-mono text-xs text-slate-300" x-text="target.ip_or_host"></p>
+                      </td>
+                      <td class="px-5 py-4 text-xs capitalize text-slate-400" x-text="target.target_type"></td>
+                      <td class="px-5 py-4">
+                        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold capitalize" :class="monitoringStatusClass(target.status)">
+                          <span class="h-1.5 w-1.5 rounded-full" :class="monitoringDotClass(target.status)"></span>
+                          <span x-text="target.status"></span>
+                        </span>
+                      </td>
+                      <td class="px-5 py-4 text-right font-mono text-xs" :class="target.last_latency_ms != null ? 'text-slate-300' : 'text-secondary'" x-text="target.last_latency_ms != null ? `${target.last_latency_ms.toFixed(1)} ms` : '—'"></td>
+                      <td class="px-5 py-4 text-xs text-slate-400" x-text="target.last_checked_at ? relativeTime(target.last_checked_at) : 'Never'"></td>
+                      <td class="px-5 py-4">
+                        <div class="flex items-center gap-2">
+                          <button x-show="isAdmin" @click="checkTarget(target.id)" class="rounded-lg bg-cyan-400/10 px-2.5 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20" title="Check now" data-i18n="monitoring.check">Check now</button>
+                          <button @click="loadTargetLogs(target)" class="rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700" title="History" data-i18n="monitoring.history">History</button>
+                          <button x-show="isAdmin" @click="editTarget(target)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-400/20" title="Edit" data-i18n="monitoring.edit">Edit</button>
+                          <button x-show="isAdmin" @click="deleteTarget(target)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-400/20" title="Delete" data-i18n="monitoring.delete">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+              <div x-show="!filteredTargets.length && !monitoringLoading" class="px-6 py-16 text-center">
+                <div class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-800 text-secondary">
+                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 18V6m5 12V9m5 9V4m5 14v-7"/></svg>
+                </div>
+                <p class="mt-4 font-medium text-slate-300" x-text="targetSearch ? 'No matching targets' : 'No monitoring targets configured'"></p>
+                <p class="mt-1 text-sm text-secondary" x-text="targetSearch ? 'Try another search term.' : 'An administrator can add a website or network host.'"></p>
+                <button x-show="isAdmin && !targetSearch" @click="openTargetForm()" class="btn--primary mt-4">Add Target</button>
+              </div>
+            </div>
           </div>
 
-          <div x-show="selectedTarget" class="mt-6 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
+          <div x-show="selectedTarget" class="surface mt-6 p-5">
             <h3 class="font-semibold text-white"><span x-text="selectedTarget?.name"></span> · <span data-i18n="monitoring.history">History</span></h3>
-            <p x-show="selectedLogsLoading" class="mt-4 text-sm text-slate-500">Loading history…</p>
+            <p x-show="selectedLogsLoading" class="mt-4 text-sm text-secondary">Loading history…</p>
             <p x-show="selectedLogsError" class="mt-4 text-sm text-rose-300" x-text="selectedLogsError"></p>
-            <p x-show="!selectedLogsLoading && !selectedLogsError && !selectedTargetLogs.length" class="mt-4 text-sm text-slate-500" data-i18n="monitoring.no_history">No checks have been recorded for this target.</p>
+            <p x-show="!selectedLogsLoading && !selectedLogsError && !selectedTargetLogs.length" class="mt-4 text-sm text-secondary" data-i18n="monitoring.no_history">No checks have been recorded for this target.</p>
             <div x-show="selectedTargetLogs.length" class="mt-4 space-y-2 text-xs">
               <template x-for="event in selectedTargetLogs" :key="event.id">
-                <div class="grid gap-2 border-b border-slate-800/60 py-2 sm:grid-cols-[100px_120px_1fr]"><span :class="monitoringStatusClass(event.status)" class="rounded-full px-2 py-1 text-center" x-text="event.status"></span><span class="text-slate-500" x-text="new Date(event.timestamp).toLocaleString()"></span><span class="text-slate-400" x-text="event.message || (event.latency_ms != null ? `${event.latency_ms.toFixed(1)} ms` : 'Completed')"></span></div>
+                <div class="grid gap-2 border-b border-slate-800/60 py-2 sm:grid-cols-[100px_120px_1fr]">
+                  <span class="inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-1 text-center capitalize" :class="monitoringStatusClass(event.status)">
+                    <span class="h-1.5 w-1.5 rounded-full" :class="monitoringDotClass(event.status)"></span>
+                    <span x-text="event.status"></span>
+                  </span>
+                  <span class="text-secondary" x-text="new Date(event.timestamp).toLocaleString()"></span>
+                  <span class="text-slate-400" x-text="event.message || (event.latency_ms != null ? `${event.latency_ms.toFixed(1)} ms` : 'Completed')"></span>
+                </div>
               </template>
             </div>
           </div>
 
-          <div class="mt-6 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5">
+          <div class="surface mt-6 p-5">
             <h3 class="font-semibold text-white" data-i18n="monitoring.recent">Recent monitoring events</h3>
-            <p x-show="!monitoringHistory.length" class="mt-4 text-sm text-slate-500" data-i18n="monitoring.no_history">No checks have been recorded yet.</p>
-            <div x-show="monitoringHistory.length" class="mt-4 max-h-80 space-y-2 overflow-y-auto text-xs">
+            <p x-show="!monitoringHistory.length" class="mt-4 text-sm text-secondary" data-i18n="monitoring.no_history">No checks have been recorded yet.</p>
+            <div x-show="monitoringHistory.length" class="mt-4 max-h-80 space-y-1 overflow-y-auto text-xs">
               <template x-for="event in monitoringHistory" :key="event.id">
-                <div class="grid gap-2 border-b border-slate-800/60 py-2 sm:grid-cols-[1fr_100px_140px]"><span class="text-slate-300" x-text="targetName(event.target_id)"></span><span x-text="event.status"></span><span class="text-slate-500" x-text="new Date(event.timestamp).toLocaleString()"></span></div>
+                <div class="flex items-center gap-3 border-b border-slate-800/60 py-2 last:border-b-0">
+                  <span class="inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-1 capitalize" :class="monitoringStatusClass(event.status)">
+                    <span class="h-1.5 w-1.5 rounded-full" :class="monitoringDotClass(event.status)"></span>
+                    <span x-text="event.status"></span>
+                  </span>
+                  <span class="min-w-0 flex-1 truncate text-slate-300" x-text="targetName(event.target_id)"></span>
+                  <span class="shrink-0 text-secondary" x-text="new Date(event.timestamp).toLocaleString()"></span>
+                </div>
               </template>
             </div>
           </div>
         </section>
 
-<section x-show="page === 'preferences'" x-cloak x-transition.opacity id="preferences">
-          <div class="mb-6">
-            <p class="text-sm font-medium text-cyan-400" data-i18n="preferences.overline">PREFERENCES</p>
-            <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="preferences.title">Preferences</h2>
+        <section x-show="page === 'security'" x-cloak x-transition.opacity>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-cyan-300">SECURITY &amp; GOVERNANCE</p>
+              <h2 class="page-title">Access, policy, and audit posture</h2>
+              <p class="page-subtitle">Frontend affordances mirror the implemented ADMIN/VIEW dependencies; backend authorization remains the source of truth.</p>
+            </div>
+            <div class="action-bar__actions">
+              <span class="status-chip" x-text="`SESSION ROLE ${currentUser?.role || 'UNKNOWN'}`"></span>
+            </div>
+          </div>
+
+          <div class="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,.9fr)]">
+            <section class="enterprise-panel">
+              <div class="enterprise-panel__header">
+                <h3 class="enterprise-panel__title">Permission Mapping</h3>
+                <span class="status-chip">BACKEND ENFORCED</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead class="border-b border-[#2E3440] bg-[#13151A] telemetry-text text-[9px] uppercase text-muted">
+                    <tr><th class="px-4 py-3">Capability</th><th class="px-4 py-3">VIEW</th><th class="px-4 py-3">ADMIN</th><th class="px-4 py-3">Backend dependency</th></tr>
+                  </thead>
+                  <tbody class="divide-y divide-[#2E3440]">
+                    <tr><td class="px-4 py-3 text-slate-200">Read assets, people, targets, logs</td><td class="px-4 py-3 text-emerald-300">ALLOW</td><td class="px-4 py-3 text-emerald-300">ALLOW</td><td class="telemetry-text px-4 py-3 text-muted">get_current_user</td></tr>
+                    <tr><td class="px-4 py-3 text-slate-200">Mutate inventory and assignments</td><td class="px-4 py-3 text-rose-300">DENY</td><td class="px-4 py-3 text-emerald-300">ALLOW</td><td class="telemetry-text px-4 py-3 text-muted">require_admin</td></tr>
+                    <tr><td class="px-4 py-3 text-slate-200">Run checks / manage targets</td><td class="px-4 py-3 text-rose-300">DENY</td><td class="px-4 py-3 text-emerald-300">ALLOW</td><td class="telemetry-text px-4 py-3 text-muted">require_admin</td></tr>
+                    <tr><td class="px-4 py-3 text-slate-200">Manage operator accounts</td><td class="px-4 py-3 text-rose-300">DENY</td><td class="px-4 py-3 text-emerald-300">ALLOW</td><td class="telemetry-text px-4 py-3 text-muted">require_admin</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="enterprise-panel">
+              <div class="enterprise-panel__header">
+                <h3 class="enterprise-panel__title">Policy Engine Status</h3>
+                <span class="status-chip">PROTOTYPE</span>
+              </div>
+              <div class="space-y-2 p-4">
+                <div class="flex items-center justify-between rounded-md border border-[#2E3440] bg-[#13151A] p-3"><span class="text-xs text-slate-300">Signed bearer session</span><span class="telemetry-text text-[10px] text-emerald-300">ACTIVE</span></div>
+                <div class="flex items-center justify-between rounded-md border border-[#2E3440] bg-[#13151A] p-3"><span class="text-xs text-slate-300">Server-side revocation</span><span class="telemetry-text text-[10px] text-amber-300">GAP</span></div>
+                <div class="flex items-center justify-between rounded-md border border-[#2E3440] bg-[#13151A] p-3"><span class="text-xs text-slate-300">Tenant context isolation</span><span class="telemetry-text text-[10px] text-amber-300">GAP</span></div>
+                <div class="flex items-center justify-between rounded-md border border-[#2E3440] bg-[#13151A] p-3"><span class="text-xs text-slate-300">Policy decision records</span><span class="telemetry-text text-[10px] text-amber-300">GAP</span></div>
+              </div>
+            </section>
+          </div>
+
+          <div class="mt-3 grid gap-3 xl:grid-cols-2">
+            <section class="enterprise-panel">
+              <div class="enterprise-panel__header">
+                <h3 class="enterprise-panel__title">Operator Accounts</h3>
+                <button x-show="isAdmin" type="button" @click="navigate('preferences')" class="text-[10px] text-cyan-300 hover:text-cyan-100">MANAGE</button>
+              </div>
+              <div x-show="isAdmin" class="max-h-80 overflow-y-auto">
+                <template x-for="user in users" :key="user.id">
+                  <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-[#2E3440] px-4 py-3 last:border-0">
+                    <div><p class="text-xs font-medium text-white" x-text="user.username"></p><p class="telemetry-text mt-1 text-[9px] text-muted" x-text="`USER ${user.id}`"></p></div>
+                    <span class="status-chip" x-text="user.role"></span>
+                    <span class="telemetry-text text-[9px]" :class="user.is_active ? 'text-emerald-300' : 'text-rose-300'" x-text="user.is_active ? 'ACTIVE' : 'DISABLED'"></span>
+                  </div>
+                </template>
+              </div>
+              <div x-show="!isAdmin" class="p-5 text-xs text-muted">User enumeration is intentionally hidden because the backend requires ADMIN.</div>
+            </section>
+
+            <section class="enterprise-panel">
+              <div class="enterprise-panel__header">
+                <h3 class="enterprise-panel__title">Audit Evidence</h3>
+                <span class="status-chip">PARTIAL</span>
+              </div>
+              <div class="architecture-gap m-4 p-3 text-xs">
+                High-fidelity user and agent action events are not modeled. Export history is the only persisted user-attributed evidence currently exposed.
+              </div>
+              <div class="max-h-56 overflow-y-auto px-4 pb-4">
+                <template x-for="entry in exportHistory.slice(0, 8)" :key="entry.id">
+                  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-[#2E3440] py-2 last:border-0">
+                    <span class="telemetry-text text-[9px] text-cyan-300" x-text="entry.export_type.toUpperCase()"></span>
+                    <span class="truncate text-[11px] text-slate-300" x-text="entry.username"></span>
+                    <time class="telemetry-text text-[9px] text-muted" x-text="new Date(entry.created_at).toLocaleString()"></time>
+                  </div>
+                </template>
+                <p x-show="!exportHistory.length" class="py-5 text-center text-[11px] text-muted">No export evidence has been recorded.</p>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section x-show="page === 'preferences'" x-cloak x-transition.opacity id="preferences">
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-cyan-400" data-i18n="preferences.overline">PREFERENCES</p>
+              <h2 class="page-title" data-i18n="preferences.title">Preferences</h2>
+            </div>
           </div>
           <div class="mb-6 flex gap-2 border-b border-slate-800/70">
             <button @click="preferencesTab = 'access'" x-text="translated('preferences.tab.access', 'Access Management')"
@@ -426,9 +857,9 @@
           <div x-show="preferencesTab === 'access'">
             <div class="mb-6 flex items-center justify-between">
               <div><p class="text-sm font-medium text-cyan-400" data-i18n="users.overline">ACCESS MANAGEMENT</p><h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="users.title">ForgeOS users</h2></div>
-              <button @click="openUserForm()" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950" data-i18n="users.new">New User</button>
+              <button @click="openUserForm()" class="btn--primary" data-i18n="users.new">New User</button>
             </div>
-            <form x-show="showUserForm" @submit.prevent="saveUser()" class="mb-5 grid gap-4 rounded-2xl border border-cyan-400/20 bg-slate-900/75 p-5 md:grid-cols-2">
+            <form x-show="showUserForm" @submit.prevent="saveUser()" class="form-shell mb-5 grid gap-4 p-5 md:grid-cols-2">
               <input x-model="userForm.username" :disabled="Boolean(userForm.id)" required placeholder="Username" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white disabled:opacity-60">
               <input x-model="userForm.password" type="password" :required="!userForm.id" placeholder="Password (10+ characters)" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white">
               <select x-model="userForm.role" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white"><option value="VIEW">VIEW</option><option value="ADMIN">ADMIN</option></select>
@@ -436,68 +867,70 @@
               <div class="flex justify-end gap-2 md:col-span-2"><button type="button" @click="showUserForm = false" class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancel</button><button class="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950">Save User</button></div>
             </form>
             <input x-model="userSearch" type="search" placeholder="Search users..." class="mb-4 w-full max-w-sm rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white">
-            <div class="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60">
-              <template x-for="user in filteredUsers" :key="user.id"><div class="flex items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4"><div><span class="font-medium text-white" x-text="user.username"></span><p class="mt-1 text-xs" :class="user.is_active ? 'text-emerald-300' : 'text-slate-600'" x-text="user.is_active ? 'Active' : 'Inactive'"></p></div><div class="flex items-center gap-2"><span class="rounded-full bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-300" x-text="user.role"></span><button @click="editUser(user)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs text-amber-300">Edit</button><button x-show="user.id !== currentUser?.id" @click="deleteUser(user)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs text-rose-300">Delete</button></div></div></template>
-              <div x-show="!filteredUsers.length" class="empty-state m-4 rounded-xl px-5 py-10 text-center">
+            <div class="table-shell">
+              <template x-for="user in filteredUsers" :key="user.id"><div class="flex items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4"><div><span class="font-medium text-white" x-text="user.username"></span><p class="mt-1 text-xs" :class="user.is_active ? 'text-emerald-300' : 'text-secondary'" x-text="user.is_active ? 'Active' : 'Inactive'"></p></div><div class="flex items-center gap-2"><span class="rounded-full bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-300" x-text="user.role"></span><button @click="editUser(user)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs text-amber-300">Edit</button><button x-show="user.id !== currentUser?.id" @click="deleteUser(user)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs text-rose-300">Delete</button></div></div></template>
+              <div x-show="!filteredUsers.length" class="empty-state empty-state--tight text-center m-4">
                 <p class="font-medium text-slate-300">No matching users</p>
-                <p class="mt-2 text-sm text-slate-600">Create an operator account or clear the current search.</p>
+                <p class="mt-2 text-sm text-secondary">Create an operator account or clear the current search.</p>
               </div>
             </div>
           </div>
         </section>
 
         <section x-show="page === 'import'" x-cloak x-transition.opacity>
-          <div class="mb-6">
-            <p class="text-sm font-medium text-cyan-400">SYSTEM INGESTION</p>
-            <h2 class="mt-1 text-2xl font-semibold text-white">Import a Windows report</h2>
-            <p class="mt-2 max-w-2xl text-sm text-slate-500">Drop a DxDiag.txt or systeminfo.txt report. Parsing runs locally and deterministically.</p>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-cyan-400">SYSTEM INGESTION</p>
+              <h2 class="page-title">Import a Windows report</h2>
+              <p class="page-subtitle">Drop a DxDiag.txt or systeminfo.txt report. Parsing runs locally and deterministically.</p>
+            </div>
           </div>
           <div class="grid gap-6 xl:grid-cols-[.9fr_1.1fr]">
             <div>
               <div @dragover.prevent="dragging = true" @dragleave.prevent="dragging = false" @drop.prevent="handleDrop($event)"
                    class="relative flex min-h-80 flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-slate-900/55 p-8 text-center backdrop-blur-md transition"
-                   :class="dragging ? 'border-cyan-400 bg-cyan-400/5 shadow-cyan' : 'border-slate-700 hover:border-slate-600'">
+                   :class="dragging ? 'border-cyan-400 bg-cyan-400/5 status-glow--info' : 'border-slate-700 hover:border-slate-600'">
                 <input x-ref="fileInput" @change="selectFile($event.target.files[0])" type="file" accept=".txt,text/plain" class="hidden">
-                <div class="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-cyan-400/15 to-emerald-400/15 text-cyan-300">
+                <div class="grid h-16 w-16 place-items-center rounded-md border border-cyan-300/25 bg-[#1D2129] text-cyan-300">
                   <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
                 </div>
                 <p class="mt-5 font-semibold text-white" x-text="selectedFile ? selectedFile.name : 'Drop your report here'"></p>
-                <p class="mt-2 text-sm text-slate-500">TXT only · up to 5 MB</p>
+                <p class="mt-2 text-sm text-secondary">TXT only · up to 5 MB</p>
                 <button @click="$refs.fileInput.click()" class="mt-6 rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-2.5 text-sm font-medium text-cyan-300 transition hover:bg-cyan-400/15">Choose File</button>
               </div>
               <div x-show="uploading" class="mt-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
                 <div class="flex justify-between text-xs"><span class="text-slate-400">Parsing and storing report</span><span class="text-cyan-300" x-text="uploadProgress + '%'"></span></div>
-                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-300" :style="`width: ${uploadProgress}%`"></div></div>
+                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-cyan-300 transition-all duration-150" :style="`width: ${uploadProgress}%`"></div></div>
               </div>
               <button x-show="isAdmin" @click="uploadReport()" :disabled="!selectedFile || uploading"
-                      class="mt-4 w-full rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 shadow-cyan transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
+                      class="btn--primary w-full mt-4 disabled:cursor-not-allowed">
                 <span x-text="uploading ? 'Importing…' : 'Import & Analyze'"></span>
               </button>
             </div>
 
-            <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-md">
+            <div class="surface p-5">
               <div x-show="!importResult" class="flex min-h-96 flex-col items-center justify-center text-center">
-                <div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-800/70 text-slate-500">
+                <div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-800/70 text-secondary">
                   <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z"/><path d="M14 3v6h6M8 14h8M8 17h5"/></svg>
                 </div>
                 <p class="mt-4 font-medium text-slate-300">Analysis results</p>
-                <p class="mt-2 max-w-xs text-sm leading-6 text-slate-600">Parsed hardware fields and the recommended ForgeOS profile appear here.</p>
+                <p class="mt-2 max-w-xs text-sm leading-6 text-secondary">Parsed hardware fields and the recommended ForgeOS profile appear here.</p>
               </div>
               <div x-show="importResult" x-cloak>
                 <div class="flex flex-col gap-4 border-b border-slate-800/70 pb-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Recommended Profile</p>
-                    <div class="mt-2 inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-lg font-semibold text-emerald-300 shadow-emerald">
+                    <p class="text-xs font-medium uppercase tracking-wider text-muted">Recommended Profile</p>
+                    <div class="mt-2 inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-lg font-semibold text-emerald-300 status-glow--ok">
                       <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981]"></span>
                       <span x-text="profileLabel(importResult?.suggested_profile)"></span>
                     </div>
                   </div>
-                  <div class="text-left sm:text-right"><p class="text-xs text-slate-500">Source</p><p class="mt-1 font-mono text-sm text-cyan-300" x-text="importResult?.provider?.name || importResult?.sources?.[0]?.format || 'Unknown'"></p></div>
+                  <div class="text-left sm:text-right"><p class="text-xs text-secondary">Source</p><p class="mt-1 font-mono text-sm text-cyan-300" x-text="importResult?.provider?.name || importResult?.sources?.[0]?.format || 'Unknown'"></p></div>
                 </div>
                 <div class="mt-5 grid gap-3 sm:grid-cols-2">
                   <template x-for="field in parsedFields" :key="field.key">
                     <div class="rounded-xl border border-slate-800/70 bg-slate-950/35 p-4">
-                      <p class="text-xs uppercase tracking-wider text-slate-600" x-text="field.label"></p>
+                      <p class="text-xs uppercase tracking-wider text-secondary" x-text="field.label"></p>
                       <p class="mt-2 break-words text-sm font-medium text-slate-200" x-text="displayParsed(field.key)"></p>
                     </div>
                   </template>
@@ -507,32 +940,32 @@
           </div>
         </section>
         <section x-show="page === 'reports'" x-cloak x-transition.opacity id="reports">
-          <div class="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <div>
-              <p class="text-sm font-medium text-cyan-400" data-i18n="reports.overline">EXPORT HISTORY</p>
-              <h2 class="mt-1 text-2xl font-semibold text-white" data-i18n="reports.title">Export History</h2>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-cyan-400" data-i18n="reports.overline">EXPORT HISTORY</p>
+              <h2 class="page-title" data-i18n="reports.title">Export History</h2>
             </div>
-            <div class="flex gap-3">
+            <div class="action-bar__actions">
               <button @click="exportExcel()" class="rounded-xl bg-emerald-400/10 px-4 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-400/20" data-i18n="reports.export_excel">Export Excel</button>
               <button @click="exportPdf()" class="rounded-xl bg-cyan-400/10 px-4 py-2.5 text-sm font-medium text-cyan-300 transition hover:bg-cyan-400/20" data-i18n="reports.export_pdf">Export PDF</button>
             </div>
           </div>
-          <div x-show="exportHistoryLoading" class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-6 backdrop-blur-md">
+          <div x-show="exportHistoryLoading" class="surface p-6">
             <p class="text-sm text-slate-400" data-i18n="reports.loading">Loading export history…</p>
           </div>
-          <div x-show="exportHistoryError" class="rounded-2xl border border-rose-400/20 bg-rose-400/5 p-4 backdrop-blur-md">
+          <div x-show="exportHistoryError" class="surface p-4" style="border-color: rgba(244,63,94,0.2); background: rgba(244,63,94,0.05);">
             <p class="text-sm text-rose-300" data-i18n="reports.error">Failed to load export history.</p>
           </div>
-          <div x-show="!exportHistoryLoading && !exportHistoryError && exportHistory.length === 0" class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-6 backdrop-blur-md">
+          <div x-show="!exportHistoryLoading && !exportHistoryError && exportHistory.length === 0" class="surface p-6">
             <p class="text-sm text-slate-400" data-i18n="reports.empty">No exports recorded yet.</p>
           </div>
-          <div x-show="!exportHistoryLoading && !exportHistoryError && exportHistory.length > 0" class="rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-md overflow-hidden">
+          <div x-show="!exportHistoryLoading && !exportHistoryError && exportHistory.length > 0" class="table-shell">
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b border-slate-800/70 bg-slate-950/50">
-                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500" data-i18n="reports.type">Type</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500" data-i18n="reports.date">Date</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500" data-i18n="reports.user">User</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted" data-i18n="reports.type">Type</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted" data-i18n="reports.date">Date</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted" data-i18n="reports.user">User</th>
                 </tr>
               </thead>
               <tbody>
@@ -548,9 +981,42 @@
           </div>
         </section>
       </main>
-      <footer class="border-t border-slate-800/70 px-4 py-4 text-center text-xs text-slate-600 sm:px-6 lg:px-8">
-        Created with Love and Joy by 313ON
+      <footer class="telemetry-text border-t border-[#2E3440] px-4 py-3 text-center text-[9px] text-faint sm:px-6 lg:px-8" style="padding-inline: var(--page-gutter);">
+        FORGEOS 0.1.0 · LOCAL OPERATIONS CONTROL PLANE
       </footer>
+    </div>
+  </div>
+
+  <div x-show="commandPaletteOpen" x-cloak @keydown.escape.window="closeCommandPalette()"
+       class="layer-command fixed inset-0 grid place-items-start bg-black/65 p-4 pt-[12vh]" role="presentation">
+    <div @click.outside="closeCommandPalette()" class="command-dialog" role="dialog" aria-modal="true" aria-labelledby="command-palette-title">
+      <div class="flex items-center gap-3 p-3">
+        <svg class="h-5 w-5 shrink-0 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <label id="command-palette-title" class="sr-only" for="command-palette-input">ForgeOS command palette</label>
+        <input id="command-palette-input" x-ref="commandInput" x-model="commandQuery" @keydown.enter.prevent="runFirstCommand()"
+               type="search" autocomplete="off" placeholder="Try: show failed nodes, inspect AI context, manage access..."
+               class="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-white outline-none placeholder:text-muted">
+        <span class="command-key">ESC</span>
+      </div>
+      <div class="border-t border-[#2E3440] px-3 py-2">
+        <p class="telemetry-text text-[9px] text-muted">LOCAL INTENT ROUTING · NO AGENTOS EXECUTION</p>
+      </div>
+      <div class="max-h-[22rem] overflow-y-auto">
+        <template x-for="command in filteredCommands" :key="command.id">
+          <button type="button" @click="runCommand(command)" class="command-option">
+            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-[#3B4252] bg-[#181B21] text-cyan-300" x-html="command.icon"></span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-xs font-medium" x-text="command.label"></span>
+              <span class="mt-0.5 block truncate text-[10px] text-muted" x-text="command.description"></span>
+            </span>
+            <span class="telemetry-text text-[9px] text-muted" x-text="command.scope"></span>
+          </button>
+        </template>
+        <div x-show="!filteredCommands.length" class="p-8 text-center">
+          <p class="text-xs text-slate-300">No local command matched.</p>
+          <p class="mt-2 text-[10px] text-muted">Natural-language AgentOS command execution is an architecture gap.</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -572,7 +1038,9 @@
             <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
             Manual
           </button>
-          <button @click="assetModal = false" class="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-white">✕</button>
+          <button @click="assetModal = false" class="rounded-lg p-2 text-muted hover:bg-slate-800 hover:text-white" aria-label="Close asset dialog">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
         </div>
       </div>
       <form @submit.prevent="saveAsset()" class="mt-6 space-y-4">
@@ -581,7 +1049,7 @@
             <div class="mb-4 flex flex-col justify-between gap-2 border-b border-slate-800/70 pb-3 sm:flex-row sm:items-start">
               <div>
                 <h4 class="text-sm font-semibold text-white" x-text="group.name"></h4>
-                <p class="mt-1 text-xs leading-5 text-slate-500" x-text="sectionDescription(group.name)"></p>
+                <p class="mt-1 text-xs leading-5 text-secondary" x-text="sectionDescription(group.name)"></p>
               </div>
               <span x-show="manualMode && group.specialized" class="shrink-0 rounded-full bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">Manual fields</span>
             </div>
@@ -592,7 +1060,7 @@
                     <span class="block text-xs font-medium uppercase tracking-wider text-slate-400" x-text="field.label"></span>
                     <span x-show="field.unknown" class="flex cursor-pointer items-center gap-1.5">
                       <input type="checkbox" x-model="assetUnknown[field.key]" @change="onAssetUnknownToggle(field)">
-                      <span class="text-[11px] text-slate-500">Unknown</span>
+                      <span class="text-[11px] text-secondary">Unknown</span>
                     </span>
                   </span>
                   <textarea x-show="field.textarea" :value="assetFieldValue(field)" rows="3" @input="onAssetFieldInput(field, $event)" @change="onAssetFieldChange(field)"
@@ -617,9 +1085,9 @@
             </div>
           </section>
         </template>
-        <div x-show="!visibleAssetGroups.length" class="empty-state rounded-2xl px-6 py-12 text-center">
+        <div x-show="!visibleAssetGroups.length" class="empty-state empty-state--tight text-center">
           <p class="font-medium text-slate-300">No fields available</p>
-          <p class="mt-2 text-sm text-slate-600">Choose an asset type or enable manual mode to continue.</p>
+          <p class="mt-2 text-sm text-secondary">Choose an asset type or enable manual mode to continue.</p>
         </div>
         <datalist id="asset-type-options">
           <template x-for="option in typeOptions" :key="option"><option :value="option"></option></template>
@@ -628,7 +1096,7 @@
           <template x-for="option in categoryOptions" :key="option"><option :value="option"></option></template>
         </datalist>
         <label>
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Assigned To</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Assigned To</span>
           <select x-model="assignedPersonId" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
             <option :value="null">— Unassigned —</option>
             <template x-for="person in people" :key="person.id">
@@ -637,14 +1105,14 @@
           </select>
         </label>
         <label class="sm:col-span-2">
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Invoice File</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Invoice File</span>
           <input @change="invoiceFile = $event.target.files[0] || null" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
                  class="block w-full cursor-pointer rounded-xl border border-slate-800 bg-slate-950/70 text-sm text-slate-400 file:mr-4 file:border-0 file:bg-emerald-400/10 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-emerald-300">
           <p x-show="invoiceFile" class="mt-2 text-xs text-cyan-300" x-text="invoiceFile?.name"></p>
         </label>
         <div class="mt-2 flex justify-end gap-3 border-t border-slate-800 pt-5 sm:col-span-2">
-          <button type="button" @click="assetModal = false" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800" data-i18n="modal.cancel">Cancel</button>
-          <button type="submit" :disabled="saving" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50" x-text="saving ? translated('modal.saving', 'Saving…') : (editingAssetId ? 'Save Changes' : translated('modal.create', 'Create Asset'))"></button>
+          <button type="button" @click="assetModal = false" class="btn--secondary" data-i18n="modal.cancel">Cancel</button>
+          <button type="submit" :disabled="saving" class="btn--primary" x-text="saving ? translated('modal.saving', 'Saving…') : (editingAssetId ? 'Save Changes' : translated('modal.create', 'Create Asset'))"></button>
         </div>
       </form>
     </div>
@@ -655,14 +1123,16 @@
       <div class="flex items-start justify-between gap-3">
         <div>
           <h3 class="text-lg font-semibold text-white">Extract Asset Details</h3>
-          <p class="mt-1 text-sm text-slate-500">Parse a DxDiag, systeminfo, or Linux report. The report itself is never stored — only the fields you select are applied to the asset form.</p>
+          <p class="mt-1 text-sm text-secondary">Parse a DxDiag, systeminfo, or Linux report. The report itself is never stored — only the fields you select are applied to the asset form.</p>
         </div>
-        <button @click="extractModal = false" class="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-white">✕</button>
+        <button @click="extractModal = false" class="rounded-lg p-2 text-muted hover:bg-slate-800 hover:text-white" aria-label="Close extraction dialog">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
       </div>
 
       <div class="mt-5 grid gap-4">
         <label class="block">
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Report Files (.txt, .log)</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Report Files (.txt, .log)</span>
           <input @change="extractFilesChanged($event)" type="file" accept=".txt,.log,text/plain" multiple
                  class="block w-full cursor-pointer rounded-xl border border-slate-800 bg-slate-950/70 text-sm text-slate-400 file:mr-4 file:border-0 file:bg-cyan-400/10 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-cyan-300">
           <template x-if="extractFiles && extractFiles.length">
@@ -675,12 +1145,12 @@
           </template>
         </label>
         <label class="block">
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Or paste report text</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Or paste report text</span>
           <textarea x-model="extractText" rows="6" placeholder="Paste DxDiag / systeminfo / Linux report output here…"
                     class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 font-mono text-xs text-white outline-none focus:border-cyan-500/50 placeholder:text-slate-700"></textarea>
         </label>
         <div class="flex flex-wrap gap-3">
-          <button type="button" @click="runExtraction()" :disabled="extractBusy || (!extractFiles?.length && !(extractText || '').trim())" class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50">
+          <button type="button" @click="runExtraction()" :disabled="extractBusy || (!extractFiles?.length && !(extractText || '').trim())" class="btn--primary inline-flex items-center justify-center gap-2 disabled:opacity-50">
             <span x-text="extractBusy ? 'Parsing…' : 'Parse Report(s)'"></span>
           </button>
           <a href="/static/scripts/collect_windows_specs.ps1" download class="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-400/20" title="Download Windows collector script">
@@ -692,7 +1162,7 @@
             Linux Specs
           </a>
         </div>
-        <p class="text-[11px] text-slate-500">Download a script → run locally → upload all generated reports via the file input above.</p>
+        <p class="text-[11px] text-secondary">Download a script → run locally → upload all generated reports via the file input above.</p>
       </div>
 
       <template x-if="extractCandidates.length">
@@ -731,12 +1201,12 @@
       </div>
       <div x-show="extractionAttempted && !extractBusy && !extractCandidates.length && !extractErrors.length" class="empty-state mt-5 rounded-xl px-5 py-10 text-center">
         <p class="font-medium text-slate-300">No recognizable fields found</p>
-        <p class="mt-2 text-sm text-slate-600">Confirm the report contains DxDiag, systeminfo, or Linux hardware output.</p>
+        <p class="mt-2 text-sm text-secondary">Confirm the report contains DxDiag, systeminfo, or Linux hardware output.</p>
       </div>
 
       <div class="mt-6 flex justify-end gap-3 border-t border-slate-800 pt-5">
-        <button type="button" @click="extractModal = false" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800">Cancel</button>
-        <button type="button" @click="applyExtraction()" :disabled="extractCandidates.length === 0" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50">Apply Selected</button>
+        <button type="button" @click="extractModal = false" class="btn--secondary">Cancel</button>
+        <button type="button" @click="applyExtraction()" :disabled="extractCandidates.length === 0" class="btn--primary">Apply Selected</button>
       </div>
     </div>
   </div>
@@ -744,43 +1214,45 @@
   <div x-show="personModal" x-cloak @keydown.escape.window="personModal = false" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4 backdrop-blur-sm">
     <div @click.outside="personModal = false" x-transition class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
       <div class="flex items-start justify-between">
-        <div><h3 class="text-lg font-semibold text-white" x-text="editingPersonId ? 'Edit Person' : 'Register New Person'"></h3><p class="mt-1 text-sm text-slate-500" x-text="editingPersonId ? 'Update the details of this asset custodian.' : 'Add a person who can receive asset assignments.'"></p></div>
-        <button @click="personModal = false" class="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-white">✕</button>
+        <div><h3 class="text-lg font-semibold text-white" x-text="editingPersonId ? 'Edit Person' : 'Register New Person'"></h3><p class="mt-1 text-sm text-secondary" x-text="editingPersonId ? 'Update the details of this asset custodian.' : 'Add a person who can receive asset assignments.'"></p></div>
+        <button @click="personModal = false" class="rounded-lg p-2 text-muted hover:bg-slate-800 hover:text-white" aria-label="Close person dialog">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
       </div>
       <form @submit.prevent="savePerson()" class="mt-6 grid gap-4 sm:grid-cols-2">
         <label class="sm:col-span-2">
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Full Name</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Full Name</span>
           <input x-model="newPerson.full_name" required placeholder="Jane Doe" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
         </label>
         <label>
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Org Unit</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Org Unit</span>
           <input x-model="newPerson.org_unit" placeholder="Operations" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
         </label>
         <label>
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Job Role</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Job Role</span>
           <input x-model="newPerson.job_role" placeholder="Technician" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
         </label>
         <label>
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Email</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Email</span>
           <input x-model="newPerson.email" type="email" placeholder="jane@example.com" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
         </label>
         <label>
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Phone</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Phone</span>
           <input x-model="newPerson.phone" placeholder="+1 555 0100" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
         </label>
         <label class="sm:col-span-2">
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Notes</span>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Notes</span>
           <textarea x-model="newPerson.notes" rows="3" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50"></textarea>
         </label>
         <div class="mt-2 flex justify-end gap-3 border-t border-slate-800 pt-5 sm:col-span-2">
-          <button type="button" @click="personModal = false" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800" data-i18n="modal.cancel">Cancel</button>
-          <button type="submit" :disabled="saving" class="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50" x-text="saving ? translated('modal.saving', 'Saving…') : (editingPersonId ? 'Save Changes' : 'Create Person')"></button>
+          <button type="button" @click="personModal = false" class="btn--secondary" data-i18n="modal.cancel">Cancel</button>
+          <button type="submit" :disabled="saving" class="btn--primary" x-text="saving ? translated('modal.saving', 'Saving…') : (editingPersonId ? 'Save Changes' : 'Create Person')"></button>
         </div>
       </form>
     </div>
   </div>
 
-  <div class="fixed bottom-5 right-5 z-[60] space-y-3">
+  <div class="layer-toast fixed bottom-5 right-5 space-y-3" aria-live="polite" aria-atomic="true">
     <template x-for="toast in toasts" :key="toast.id">
       <div x-transition class="flex max-w-sm items-start gap-3 rounded-xl border bg-slate-900/95 px-4 py-3 shadow-2xl backdrop-blur"
            :class="toast.type === 'error' ? 'border-rose-400/25' : 'border-emerald-400/25'">
@@ -790,16 +1262,16 @@
     </template>
   </div>
 
-  <div x-show="!authenticated" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-slate-950 p-4">
-    <form @submit.prevent="login()" class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/90 p-7 shadow-2xl">
-      <p class="text-sm font-medium text-cyan-400">FORGEOS ACCESS</p>
+  <div x-show="!authenticated" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-[#0D0E11] p-4">
+    <form @submit.prevent="login()" class="w-full max-w-md rounded-lg border border-[#3B4252] bg-[#13151A] p-7 shadow-2xl">
+      <p class="telemetry-text text-xs font-medium text-cyan-300">FORGEOS SECURE ACCESS</p>
       <h1 class="mt-2 text-2xl font-semibold text-white" data-i18n="auth.login_title">Sign in to ForgeOS</h1>
-      <p class="mt-2 text-sm text-slate-500" data-i18n="auth.login_help">Use an operator account to access the workspace.</p>
-      <label class="mt-6 block text-xs uppercase tracking-wider text-slate-500" data-i18n="auth.username">Username</label>
+      <p class="mt-2 text-sm text-secondary" data-i18n="auth.login_help">Use an operator account to access the workspace.</p>
+      <label class="mt-6 block text-xs uppercase tracking-wider text-muted" data-i18n="auth.username">Username</label>
       <input x-model="loginForm.username" autocomplete="username" class="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-white outline-none focus:border-cyan-500/50">
-      <label class="mt-4 block text-xs uppercase tracking-wider text-slate-500" data-i18n="auth.password">Password</label>
+      <label class="mt-4 block text-xs uppercase tracking-wider text-muted" data-i18n="auth.password">Password</label>
       <input x-model="loginForm.password" type="password" autocomplete="current-password" class="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-white outline-none focus:border-cyan-500/50">
-      <button class="mt-6 w-full rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-3 font-semibold text-slate-950" data-i18n="auth.login">Login</button>
+      <button class="btn--primary mt-6 w-full" data-i18n="auth.login">Login</button>
     </form>
   </div>
 
@@ -898,12 +1370,17 @@
       };
       return {
         page: "dashboard", preferencesTab: "access", loading: true, saving: false, assetModal: false, editingAssetId: null, personModal: false, editingPersonId: null, authenticated: Boolean(localStorage.getItem("forgeos-token")),
+        sidebarCollapsed: localStorage.getItem("forgeos-sidebar-collapsed") === "true",
+        commandPaletteOpen: false, commandQuery: "",
         currentUser: null, loginForm: { username: "", password: "" },
         language: localStorage.getItem("forgeos-language") || "en", dictionary: {},
         dragging: false, selectedFile: null, uploading: false, uploadProgress: 0, importResult: null,
         assetSearch: "", userSearch: "", assets: [], people: [], users: [], targets: [], monitoringHistory: [], selectedTarget: null, selectedTargetLogs: [], toasts: [], lastUpdated: "just now",
+        selectedAssetIds: [], assetSorts: [{ key: "asset_tag", direction: "asc" }],
+        selectedAiAssetId: "", agentPrompt: "", aiInsight: null, aiLoading: false,
         monitoringLoading: false, monitoringSaving: false, monitoringError: "", selectedLogsLoading: false, selectedLogsError: "", showTargetForm: false, monitoringTimer: null,
         targetForm: { id: null, name: "", ip_or_host: "", target_type: "website", ping_interval_sec: 60, allow_private_networks: false, enabled: true },
+        targetSearch: "",
         showUserForm: false, userForm: { id: null, username: "", password: "", role: "VIEW", is_active: true },
         summary: { counts: { assets: 0, people: 0, active_assignments: 0, system_snapshots: 0 }, warnings: { expiring_warranties: [], missing_serial: [], unassigned_assets: [] }, warning_count: 0, recent_activity: [] },
 invoiceFile: null,
@@ -919,14 +1396,24 @@ invoiceFile: null,
         assetUnknown: { purchase_date: false, purchase_price: false, status: false, warranty_expiration_date: false, support_expiration_date: false },
         extractModal: false, extractText: "", extractFiles: [], extractCandidates: [], extractSelection: {}, extractProviders: [], extractErrors: [], extractionAttempted: false, extractBusy: false,
         newPerson: { full_name: "", org_unit: "", job_role: "", email: "", phone: "", status: "active", notes: "" },
+        assetTableColumns: [
+          { key: "asset_tag", label: "Asset" },
+          { key: "type", label: "Type" },
+          { key: "serial_number", label: "Serial" },
+          { key: "purchase_date", label: "Purchase" },
+          { key: "location", label: "Location" },
+          { key: "status", label: "Status" },
+        ],
 navigation: [
-          { id: "dashboard", label: "Dashboard", labelKey: "nav.dashboard", icon: icon('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>') },
-          { id: "assets", label: "Assets", labelKey: "nav.assets", icon: icon('<path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4"/>') },
+          { id: "dashboard", label: "Global Console", icon: icon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>') },
+          { id: "execution", label: "Agent Execution", icon: icon('<path d="M8 9h8M8 13h5"/><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5l-4 3v-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>') },
+          { id: "monitoring", label: "Network Topology", icon: icon('<circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="m7 11 10-4M7 13l10 4"/>') },
+          { id: "assets", label: "Asset Registry", labelKey: "nav.assets", icon: icon('<path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4"/>') },
           { id: "people", label: "People", labelKey: "nav.people", icon: icon('<circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M16 4.5a4 4 0 0 1 0 7.5M18 15a6 6 0 0 1 3.5 6"/>') },
-          { id: "import", label: "Import", labelKey: "nav.import", icon: icon('<path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>') },
-          { id: "monitoring", label: "Monitoring", labelKey: "nav.monitoring", icon: icon('<path d="M4 18V6m5 12V9m5 9V4m5 14v-7"/>') },
-          { id: "preferences", label: "Preferences", labelKey: "nav.preferences", adminOnly: true, icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') },
-          { id: "reports", label: "Reports", labelKey: "nav.reports", icon: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>') }
+          { id: "security", label: "Security & Governance", icon: icon('<path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/><path d="m9 12 2 2 4-5"/>') },
+          { id: "import", label: "System Intake", labelKey: "nav.import", icon: icon('<path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>') },
+          { id: "reports", label: "Reports", labelKey: "nav.reports", icon: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>') },
+          { id: "preferences", label: "Access Management", labelKey: "nav.preferences", adminOnly: true, icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') }
         ],
         parsedFields: [
           { key: "hostname", label: "Hostname" }, { key: "manufacturer", label: "Manufacturer" },
@@ -985,9 +1472,11 @@ navigation: [
           { key: "org_unit", label: "Org Unit" },
         ],
         async init() {
- const hash = window.location.hash.replace("#", "");
+            const pathPage = window.location.pathname.replace(/^\/+|\/+$/g, "");
+            const hash = window.location.hash.replace("#", "");
             if (hash && this.navigation.some(n => n.id === hash)) { this.page = hash; }
             else if (hash === "users") { this.page = "preferences"; this.preferencesTab = "access"; }
+            else if (pathPage && this.navigation.some(n => n.id === pathPage)) { this.page = pathPage; }
             else if (window.location.pathname === "/preferences") { this.page = "preferences"; this.preferencesTab = "access"; }
            window.addEventListener("forge:language", (event) => {
              this.language = event.detail.language;
@@ -1000,18 +1489,33 @@ navigation: [
            if (window.forgeI18n) await window.forgeI18n.setLanguage(this.language);
            if (this.authenticated) {
              try { this.currentUser = await this.api("/api/v1/auth/me"); } catch (_) { this.logout(); }
-              if (this.authenticated) await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets(), this.loadUsers(), this.loadExportHistory()]);
+              if (this.authenticated) await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.refreshMonitoring(false), this.loadUsers(), this.loadExportHistory()]);
            }
+           if (["dashboard", "monitoring"].includes(this.page)) this.startMonitoringPolling();
            this.loading = false;
          },
         get isAdmin() { return String(this.currentUser?.role || "").toUpperCase() === "ADMIN"; },
         get monitoringSummary() {
+          const total = this.targets.length;
+          const passing = this.targets.filter(item => item.status === "PASS").length;
+          const failed = this.targets.filter(item => item.status === "FAILED").length;
+          const warnings = this.targets.filter(item => item.status === "WARNING").length;
+          const issues = failed + warnings;
+          const latencies = this.targets.map(item => item.last_latency_ms).filter((value) => value != null);
+          const avgLatency = latencies.length ? (latencies.reduce((a, b) => a + b, 0) / latencies.length).toFixed(0) : null;
+          const checks = this.targets.map(item => item.last_checked_at).filter(Boolean);
+          const lastCheck = checks.length ? new Date(Math.max(...checks.map((value) => new Date(value).getTime()))).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Never";
           return [
-            { label: "Targets", value: this.targets.length, color: "text-white" },
-            { label: "Passing", value: this.targets.filter(item => item.status === "PASS").length, color: "text-emerald-300" },
-            { label: "Warning", value: this.targets.filter(item => item.status === "WARNING").length, color: "text-amber-300" },
-            { label: "Failed", value: this.targets.filter(item => item.status === "FAILED").length, color: "text-rose-300" },
+            { label: "Online", value: total ? `${passing}/${total}` : "—", caption: passing === total && total ? "All targets healthy" : "Passing checks", dot: "bg-emerald-400 shadow-[0_0_10px_#10b981]" },
+            { label: "Avg Latency", value: avgLatency != null ? `${avgLatency} ms` : "—", caption: latencies.length ? `${latencies.length} measured` : "No measurements yet", dot: "bg-cyan-400 shadow-[0_0_10px_#06b6d4]" },
+            { label: "Issues", value: issues, caption: `${failed} failed, ${warnings} warnings`, dot: issues ? "bg-amber-400 shadow-[0_0_10px_#f59e0b]" : "bg-slate-600" },
+            { label: "Last Check", value: lastCheck, caption: "Most recent probe", dot: "bg-slate-400" },
           ];
+        },
+        get filteredTargets() {
+          const query = (this.targetSearch || "").trim().toLowerCase();
+          if (!query) return this.targets;
+          return this.targets.filter(target => [target.name, target.ip_or_host].filter(Boolean).some(value => String(value).toLowerCase().includes(query)));
         },
         get filteredUsers() {
           const query = this.userSearch.trim().toLowerCase();
@@ -1058,33 +1562,188 @@ navigation: [
         },
         get filteredAssets() {
           const query = this.assetSearch.trim().toLowerCase();
-          if (!query) return this.assets;
-          return this.assets.filter(asset => [asset.asset_tag, asset.type, asset.brand, asset.model, asset.serial_number, asset.location, asset.status].filter(Boolean).some(value => value.toLowerCase().includes(query)));
+          const visible = query
+            ? this.assets.filter(asset => [asset.asset_tag, asset.type, asset.brand, asset.model, asset.serial_number, asset.location, asset.status].filter(Boolean).some(value => String(value).toLowerCase().includes(query)))
+            : [...this.assets];
+          return visible.sort((left, right) => {
+            for (const sort of this.assetSorts) {
+              const leftValue = left[sort.key] ?? "";
+              const rightValue = right[sort.key] ?? "";
+              const comparison = String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" });
+              if (comparison) return sort.direction === "asc" ? comparison : -comparison;
+            }
+            return left.id - right.id;
+          });
         },
-        get kpiCards() {
-          const c = this.summary.counts;
+        get allVisibleAssetsSelected() {
+          return Boolean(this.filteredAssets.length) && this.filteredAssets.every(asset => this.selectedAssetIds.includes(asset.id));
+        },
+        get operationalExceptionCount() {
+          const targetExceptions = this.targets.filter(target => ["FAILED", "WARNING"].includes(target.status)).length;
+          return Number(this.summary.warning_count || 0) + targetExceptions;
+        },
+        get nocMetrics() {
+          const totalTargets = this.targets.length;
+          const passingTargets = this.targets.filter(target => target.status === "PASS").length;
+          const latencies = this.targets.map(target => target.last_latency_ms).filter(value => value != null);
+          const averageLatency = latencies.length ? `${(latencies.reduce((sum, value) => sum + value, 0) / latencies.length).toFixed(0)} ms` : "—";
           return [
-            { label: this.translated("dashboard.total_assets", "Total Assets"), value: c.assets, caption: this.translated("dashboard.across_locations", "Across all locations"), page: "assets", glow: "shadow-cyan", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[1].icon },
-            { label: this.translated("dashboard.people", "People"), value: c.people, caption: this.translated("dashboard.registered_custodians", "Registered custodians"), page: "people", glow: "", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: this.navigation[2].icon },
-            { label: this.translated("dashboard.assigned", "Assigned"), value: c.active_assignments, caption: this.translated("dashboard.active_assignments", "Active assignments"), page: "assets", glow: "shadow-emerald", orb: "bg-emerald-400/20", iconBg: "bg-emerald-400/10 text-emerald-300", icon: icon('<path d="m5 12 4 4L19 6"/>') },
-            { label: this.translated("dashboard.snapshots", "Snapshots"), value: c.system_snapshots, caption: this.translated("dashboard.imported_reports", "Imported reports"), page: "reports", glow: "", orb: "bg-cyan-400/20", iconBg: "bg-cyan-400/10 text-cyan-300", icon: this.navigation[6].icon }
+            { label: "Target Health", value: totalTargets ? `${passingTargets}/${totalTargets}` : "—", caption: totalTargets ? "Passing monitored endpoints" : "No monitoring targets", page: "monitoring", dot: passingTargets === totalTargets && totalTargets ? "bg-emerald-300 status-glow--ok" : "bg-amber-300" },
+            { label: "Average Latency", value: averageLatency, caption: latencies.length ? `${latencies.length} latest measurements` : "No latency samples", page: "monitoring", dot: latencies.length ? "bg-cyan-300 status-glow--info" : "bg-slate-500" },
+            { label: "Managed Assets", value: this.summary.counts.assets, caption: `${this.summary.counts.active_assignments} active assignments`, page: "assets", dot: "bg-cyan-300" },
+            { label: "Open Exceptions", value: this.operationalExceptionCount, caption: "Monitoring and inventory warnings", page: this.operationalExceptionCount ? "monitoring" : "dashboard", dot: this.operationalExceptionCount ? "bg-amber-300" : "bg-emerald-300 status-glow--ok" },
           ];
+        },
+        get topologyNodes() {
+          const nodes = this.targets.slice(0, 12);
+          const count = Math.max(nodes.length, 1);
+          return nodes.map((target, index) => {
+            const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / count);
+            return {
+              ...target,
+              x: 400 + Math.cos(angle) * 285,
+              y: 180 + Math.sin(angle) * 125,
+              shortName: (target.name || `N${target.id}`).replace(/[^A-Za-z0-9]/g, "").slice(0, 7).toUpperCase(),
+              latency: target.last_latency_ms != null ? `${target.last_latency_ms.toFixed(0)}ms` : "n/a",
+            };
+          });
+        },
+        get commands() {
+          return [
+            { id: "global-console", label: "Open global telemetry console", description: "System health, target state, inventory exceptions, and governance posture.", scope: "GLOBAL", page: "dashboard", keywords: "dashboard home noc overview health" , icon: this.navigation.find(item => item.id === "dashboard").icon },
+            { id: "network-topology", label: "Inspect network topology", description: "View monitored endpoints, latency, status, and probe history.", scope: "NETWORK", page: "monitoring", keywords: "network nodes failed latency monitoring topology", icon: this.navigation.find(item => item.id === "monitoring").icon },
+            { id: "agent-context", label: "Open AI context workspace", description: "Inspect the implemented asset intelligence envelope and validation gate.", scope: "AGENT", page: "execution", keywords: "agent ai prompt llm context token cost execution", icon: this.navigation.find(item => item.id === "execution").icon },
+            { id: "asset-registry", label: "Search managed assets", description: "Open the sortable, selectable infrastructure inventory.", scope: "KNOWLEDGE", page: "assets", keywords: "assets inventory device serial hardware", icon: this.navigation.find(item => item.id === "assets").icon },
+            { id: "security-governance", label: "Review security and governance", description: "Inspect RBAC mapping, policy gaps, operators, and audit evidence.", scope: "SECURITY", page: "security", keywords: "security rbac role audit policy access users", icon: this.navigation.find(item => item.id === "security").icon },
+            { id: "system-intake", label: "Import system diagnostics", description: "Parse DxDiag, systeminfo, or Linux reports into inventory context.", scope: "INTAKE", page: "import", keywords: "import dxdiag systeminfo diagnostics hardware", icon: this.navigation.find(item => item.id === "import").icon },
+            { id: "new-asset", label: "Register a new asset", description: "Open the administrator asset intake workflow.", scope: "ADMIN", adminOnly: true, keywords: "create add register new asset", icon: icon('<path d="M12 5v14M5 12h14"/>') },
+            { id: "refresh", label: "Refresh workspace state", description: "Reload dashboard, inventory, targets, events, and evidence.", scope: "GLOBAL", keywords: "refresh reload sync update", icon: icon('<path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/>') },
+          ];
+        },
+        get filteredCommands() {
+          const query = this.commandQuery.trim().toLowerCase();
+          return this.commands
+            .filter(command => !command.adminOnly || this.isAdmin)
+            .filter(command => !query || `${command.label} ${command.description} ${command.keywords} ${command.scope}`.toLowerCase().includes(query))
+            .slice(0, 8);
         },
         get warningGroups() {
           const w = this.summary?.warnings || {};
           const expiring = Array.isArray(w.expiring_warranties) ? w.expiring_warranties : [];
           const missing = Array.isArray(w.missing_serial) ? w.missing_serial : [];
           const unassigned = Array.isArray(w.unassigned_assets) ? w.unassigned_assets : [];
+          const failed = this.targets.filter(target => target.status === "FAILED");
+          const warnings = this.targets.filter(target => target.status === "WARNING");
           return [
-            { key: "warranty", title: "Warranties expiring soon", detail: expiring[0]?.asset_tag ? `${expiring[0].asset_tag} expires first` : "No coverage expires in 30 days", count: expiring.length, color: "bg-amber-400/10 text-amber-300", icon: icon('<path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/><path d="M12 8v4m0 4h.01"/>') },
-            { key: "serial", title: "Assets missing serials", detail: missing[0]?.asset_tag ? `${missing[0].asset_tag} needs identification` : "Asset identity is complete", count: missing.length, color: "bg-rose-400/10 text-rose-300", icon: icon('<path d="M5 5h14v14H5zM8 9h8M8 13h5"/>') },
-            { key: "assignment", title: "Unassigned assets", detail: unassigned[0]?.asset_tag ? `${unassigned[0].asset_tag} is available` : "Every asset has an owner", count: unassigned.length, color: "bg-cyan-400/10 text-cyan-300", icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') }
-          ];
+            { key: "failed-targets", title: "Failed monitoring targets", detail: failed[0]?.name ? `${failed[0].name} is unreachable or unhealthy` : "", count: failed.length, page: "monitoring", color: "bg-rose-400/10 text-rose-300", icon: icon('<path d="M12 9v4m0 4h.01"/><path d="M10.3 3.7 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z"/>') },
+            { key: "warning-targets", title: "Degraded monitoring targets", detail: warnings[0]?.name ? `${warnings[0].name} requires review` : "", count: warnings.length, page: "monitoring", color: "bg-amber-400/10 text-amber-300", icon: icon('<path d="M4 18V6m5 12V9m5 9V4m5 14v-7"/>') },
+            { key: "warranty", title: "Warranties expiring soon", detail: expiring[0]?.asset_tag ? `${expiring[0].asset_tag} expires first` : "", count: expiring.length, page: "assets", color: "bg-amber-400/10 text-amber-300", icon: icon('<path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/><path d="M12 8v4m0 4h.01"/>') },
+            { key: "serial", title: "Assets missing serials", detail: missing[0]?.asset_tag ? `${missing[0].asset_tag} needs identification` : "", count: missing.length, page: "assets", color: "bg-rose-400/10 text-rose-300", icon: icon('<path d="M5 5h14v14H5zM8 9h8M8 13h5"/>') },
+            { key: "assignment", title: "Unassigned assets", detail: unassigned[0]?.asset_tag ? `${unassigned[0].asset_tag} has no custodian` : "", count: unassigned.length, page: "assets", color: "bg-cyan-400/10 text-cyan-300", icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') }
+          ].filter(item => item.count > 0);
+        },
+        toggleSidebar() {
+          this.sidebarCollapsed = !this.sidebarCollapsed;
+          localStorage.setItem("forgeos-sidebar-collapsed", String(this.sidebarCollapsed));
+        },
+        sortAssets(key, additive = false) {
+          const existing = this.assetSorts.find(sort => sort.key === key);
+          const next = existing ? { key, direction: existing.direction === "asc" ? "desc" : "asc" } : { key, direction: "asc" };
+          if (additive) {
+            this.assetSorts = [...this.assetSorts.filter(sort => sort.key !== key), next];
+          } else {
+            this.assetSorts = [next];
+          }
+        },
+        assetSortIndicator(key) {
+          const index = this.assetSorts.findIndex(sort => sort.key === key);
+          if (index < 0) return "";
+          const sort = this.assetSorts[index];
+          return `${sort.direction === "asc" ? "↑" : "↓"}${this.assetSorts.length > 1 ? index + 1 : ""}`;
+        },
+        assetAriaSort(key) {
+          const sort = this.assetSorts.find(item => item.key === key);
+          if (!sort) return "none";
+          return sort.direction === "asc" ? "ascending" : "descending";
+        },
+        toggleAssetSelection(assetId) {
+          this.selectedAssetIds = this.selectedAssetIds.includes(assetId)
+            ? this.selectedAssetIds.filter(id => id !== assetId)
+            : [...this.selectedAssetIds, assetId];
+        },
+        toggleAllVisibleAssets(checked) {
+          const visibleIds = this.filteredAssets.map(asset => asset.id);
+          this.selectedAssetIds = checked
+            ? [...new Set([...this.selectedAssetIds, ...visibleIds])]
+            : this.selectedAssetIds.filter(id => !visibleIds.includes(id));
+        },
+        exportSelectedAssets() {
+          const selected = this.assets.filter(asset => this.selectedAssetIds.includes(asset.id));
+          if (!selected.length) return;
+          const blob = new Blob([JSON.stringify(selected, null, 2)], { type: "application/json" });
+          const href = URL.createObjectURL(blob);
+          const anchor = document.createElement("a");
+          anchor.href = href;
+          anchor.download = `forgeos-assets-${new Date().toISOString().slice(0, 10)}.json`;
+          anchor.click();
+          setTimeout(() => URL.revokeObjectURL(href), 0);
+          this.toast(`Exported ${selected.length} selected asset${selected.length === 1 ? "" : "s"}`);
+        },
+        topologyNodeClass(status) {
+          return ({ PASS: "topology-node--pass", WARNING: "topology-node--warning", FAILED: "topology-node--failed" })[status] || "";
+        },
+        async openTopologyTarget(target) {
+          this.navigate("monitoring");
+          await this.loadTargetLogs(target);
+        },
+        handleGlobalShortcut(event) {
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+            event.preventDefault();
+            this.commandPaletteOpen ? this.closeCommandPalette() : this.openCommandPalette();
+          }
+        },
+        openCommandPalette() {
+          this.commandPaletteOpen = true;
+          this.commandQuery = "";
+          this.$nextTick(() => this.$refs.commandInput?.focus());
+        },
+        closeCommandPalette() {
+          this.commandPaletteOpen = false;
+          this.commandQuery = "";
+        },
+        runFirstCommand() {
+          const command = this.filteredCommands[0];
+          if (command) this.runCommand(command);
+        },
+        async runCommand(command) {
+          this.closeCommandPalette();
+          if (command.id === "new-asset") {
+            this.openNewAsset();
+            return;
+          }
+          if (command.id === "refresh") {
+            await this.refreshCurrent();
+            return;
+          }
+          if (command.page) this.navigate(command.page);
+        },
+        async loadAssetInsight() {
+          if (!this.selectedAiAssetId) return;
+          this.aiLoading = true;
+          this.aiInsight = null;
+          try {
+            this.aiInsight = await this.api(`/api/v1/assets/${this.selectedAiAssetId}/ai_insights`);
+          } catch (error) {
+            this.toast(error.message, "error");
+          } finally {
+            this.aiLoading = false;
+          }
         },
         navigate(page) {
            if (page === "users") { this.page = "preferences"; this.preferencesTab = "access"; return; }
            this.page = page;
-           if (page === "monitoring") {
+           window.history.replaceState(null, "", `#${page}`);
+           if (["dashboard", "monitoring"].includes(page)) {
              this.refreshMonitoring();
              this.startMonitoringPolling();
            } else {
@@ -1092,8 +1751,10 @@ navigation: [
            }
            this.$nextTick(() => {
              const el = document.getElementById(page);
-             if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); }
-             else { window.scrollTo({ top: 0, behavior: "smooth" }); }
+             const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+             if (el) { el.scrollIntoView({ behavior, block: "start" }); }
+             else { window.scrollTo({ top: 0, behavior }); }
+             document.getElementById("workspace-main")?.focus({ preventScroll: true });
            });
          },
         async api(url, options = {}) {
@@ -1104,7 +1765,8 @@ navigation: [
             const result = await this.api("/api/v1/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(this.loginForm) });
             localStorage.setItem("forgeos-token", result.access_token);
             this.authenticated = true; this.currentUser = result.user; this.loginForm = { username: "", password: "" };
-            await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets(), this.loadUsers()]);
+            await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.refreshMonitoring(false), this.loadUsers(), this.loadExportHistory()]);
+            this.startMonitoringPolling();
           } catch (error) { this.toast(error.message, "error"); }
         },
         logout() {
@@ -1116,7 +1778,7 @@ navigation: [
          async loadUsers() { if (this.isAdmin) try { this.users = await this.api("/api/v1/users"); } catch (error) { this.toast(error.message, "error"); } },
          async loadTargets() { try { this.targets = await this.api("/api/v1/monitoring/targets"); } catch (error) { this.toast(error.message, "error"); } },
          async loadExportHistory() { this.exportHistoryLoading = true; this.exportHistoryError = false; try { this.exportHistory = await this.api("/api/v1/export/history"); } catch (_) { this.exportHistoryError = true; } finally { this.exportHistoryLoading = false; } },
-        async refreshCurrent() { this.loading = true; await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.loadTargets()]); this.loading = false; this.toast("Workspace refreshed"); },
+        async refreshCurrent() { this.loading = true; await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.refreshMonitoring(false), this.loadExportHistory(), this.loadUsers()]); this.loading = false; this.toast("Workspace refreshed"); },
         async refreshMonitoring(showToast = false) {
           this.monitoringLoading = true; this.monitoringError = "";
           try {
@@ -1133,7 +1795,7 @@ navigation: [
         },
         startMonitoringPolling() {
           this.stopMonitoringPolling();
-          this.monitoringTimer = setInterval(() => { if (this.page === "monitoring") this.refreshMonitoring(false); }, 30000);
+          this.monitoringTimer = setInterval(() => { if (["dashboard", "monitoring"].includes(this.page)) this.refreshMonitoring(false); }, 15000);
         },
         stopMonitoringPolling() { if (this.monitoringTimer) clearInterval(this.monitoringTimer); this.monitoringTimer = null; },
         async checkTarget(id) {
@@ -1681,6 +2343,7 @@ navigation: [
         },
         statusClass(status) { return ({ active: "bg-emerald-400/10 text-emerald-300", maintenance: "bg-amber-400/10 text-amber-300", stock: "bg-cyan-400/10 text-cyan-300", retired: "bg-slate-700 text-slate-400" })[status?.toLowerCase()] || "bg-slate-700 text-slate-300"; },
         monitoringStatusClass(status) { return ({ PASS: "bg-emerald-400/10 text-emerald-300", WARNING: "bg-amber-400/10 text-amber-300", FAILED: "bg-rose-400/10 text-rose-300", UNKNOWN: "bg-slate-700 text-slate-300" })[status] || "bg-slate-700 text-slate-300"; },
+        monitoringDotClass(status) { return ({ PASS: "bg-emerald-400", WARNING: "bg-amber-400", FAILED: "bg-rose-400", UNKNOWN: "bg-slate-500" })[status] || "bg-slate-500"; },
         initials(name) { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(); },
         relativeTime(value) { const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000); return days <= 0 ? "Today" : days === 1 ? "1d ago" : `${days}d ago`; },
         toast(message, type = "success") {

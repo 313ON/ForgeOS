@@ -88,6 +88,7 @@ Current Focus
 - ROADMAP.md
 - CHANGELOG.md
 - GLOSSARY.md
+- ENTERPRISE_REDESIGN.md
 
 ---
 

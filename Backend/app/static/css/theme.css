@@ -1,26 +1,8 @@
-:root {
-  --bg-primary: #0b0f19;
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-blur: 15px;
-  --sidebar-width: 260px;
-  --bg-panel: rgba(15, 23, 42, 0.66);
-  --border-glass: rgba(71, 85, 105, 0.45);
-  --accent-emerald: #10b981;
-  --accent-cyan: #06b6d4;
-  --text-primary: #e2e8f0;
-  --font-ui: "Vazirmatn", "Segoe UI", sans-serif;
-  font-feature-settings: "ss01", "cv01", "cv02";
-}
-
-@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap");
-
 html,
 body {
   font-family: var(--font-ui);
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "ss01", "cv01", "cv02", "tnum";
 }
 
 html[dir="rtl"] {
@@ -36,6 +18,23 @@ html[dir="rtl"] .app-sidebar {
   border-inline-end: 0;
 }
 
+html[dir="rtl"] .app-content,
+html[dir="rtl"] .sidebar-collapsed .app-content {
+  margin-inline-start: 0;
+  margin-inline-end: var(--sidebar-width);
+}
+
+html[dir="rtl"] .sidebar-collapsed .app-content {
+  margin-inline-end: var(--sidebar-collapsed-width);
+}
+
+@media (max-width: 1023px) {
+  html[dir="rtl"] .app-content,
+  html[dir="rtl"] .sidebar-collapsed .app-content {
+    margin-inline-end: 0;
+  }
+}
+
 html[dir="rtl"] .app-content {
   direction: rtl;
 }
@@ -46,7 +45,7 @@ html[dir="ltr"] .app-content {
 
 .glass-panel {
   background: var(--glass-bg);
-  border: 1px solid var(--border-glass);
+  border: 1px solid var(--border-subtle);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }

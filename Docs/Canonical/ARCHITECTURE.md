@@ -49,6 +49,17 @@ structured asset context and can delegate to an OpenRouter-compatible backend
 without logging or persisting `OPENROUTER_API_KEY`. The default implementation
 returns deterministic context until an application-provided backend is enabled.
 
+## Enterprise Experience Boundary
+
+The enterprise command-center information architecture, UX contracts, architecture
+gaps, target telemetry envelopes, RBAC mapping, and AgentOS integration boundary are
+defined in `Docs/Canonical/ENTERPRISE_REDESIGN.md`.
+
+The current implementation remains one FastAPI application with a static Alpine.js
+interface. The redesigned UI may expose target-state workspaces, but it must not claim
+that AgentOS execution, multi-tenancy, topology discovery, streaming telemetry, or
+high-fidelity audit services exist until their backend contracts are implemented.
+
 ---
 
 ## Core Components
