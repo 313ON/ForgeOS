@@ -3,8 +3,11 @@ from __future__ import annotations
 import unittest
 
 from app.services.ingestion import (
+    decode_report,
     detect_source,
+    parse_memory_fragment,
     parse_dxdiag,
+    parse_ipconfig,
     parse_systeminfo,
     suggest_hardware_profile,
 )
@@ -98,12 +101,57 @@ Display Adapter:           NVIDIA RTX A2000
         )
 
     def test_source_detection_uses_filename_and_content(self) -> None:
-        self.assertEqual(detect_source("DxDiag.txt", ""), "dxdiag")
+        self.assertIsNone(detect_source("DxDiag.txt", ""))
         self.assertEqual(
             detect_source("report.txt", "OS Name: Microsoft Windows"),
+            None,
+        )
+        self.assertEqual(
+            detect_source(
+                "SYSTEMINFO.TXT",
+                "Host Name: OPS-1\nOS Name: Microsoft Windows 11\nBIOS Version: 1.2.3",
+            ),
             "systeminfo",
         )
         self.assertIsNone(detect_source("notes.txt", "hello world"))
+
+    def test_utf16le_bom_decoding(self) -> None:
+        sample = "Host Name: BOM-PC\r\nOS Name: Microsoft Windows 11\r\nBIOS Version: 1.0"
+        decoded = decode_report(sample.encode("utf-16"))
+
+        self.assertEqual(decoded, sample)
+        self.assertEqual(detect_source("SYSTEMINFO.TXT", decoded), "systeminfo")
+
+    def test_collector_fragments_are_content_classified(self) -> None:
+        ipconfig = """
+Windows IP Configuration
+Ethernet adapter Ethernet:
+   IPv4 Address. . . . . . . . . . . : 192.0.2.44
+   Default Gateway . . . . . . . . . : 192.0.2.1
+"""
+        memory = """
+Manufacturer : Kingston
+PartNumber   : ABC123
+Speed        : 3200
+Capacity     : 17179869184
+
+Manufacturer : Kingston
+PartNumber   : ABC123
+Speed        : 3200
+Capacity     : 17179869184
+"""
+        storage = """
+Model        : NVMe Drive
+SerialNumber : STORAGE-1
+MediaType    : Fixed hard disk media
+Size         : 1000204886016
+"""
+
+        self.assertEqual(detect_source("ipconfig.txt", ipconfig), "collector_ipconfig")
+        self.assertEqual(parse_ipconfig(ipconfig)["ip_address"], "192.0.2.44")
+        self.assertEqual(detect_source("memory.log", memory), "collector_memory")
+        self.assertEqual(parse_memory_fragment(memory)["ram_mb"], 32768)
+        self.assertEqual(detect_source("storage.txt", storage), "collector_storage")
 
 
 if __name__ == "__main__":

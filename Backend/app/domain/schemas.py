@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ORMModel(BaseModel):
@@ -31,40 +31,54 @@ class AssetSummary(ORMModel):
     location: str | None = None
 
 
-class AssetBase(BaseModel):
+class AssetValidationModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    @field_validator("status", check_fields=False)
+    @classmethod
+    def normalize_status(cls, value: str | None) -> str | None:
+        return value.casefold() if value else None
+
+    @field_validator("currency", check_fields=False)
+    @classmethod
+    def normalize_currency(cls, value: str | None) -> str | None:
+        return value.upper() if value else None
+
+
+class AssetBase(AssetValidationModel):
     asset_tag: str | None = Field(default=None, max_length=100)
-    type: str = Field(min_length=1, max_length=100)
-    asset_name: str | None = None
-    category: str | None = None
-    internal_inventory_number: str | None = None
-    brand: str | None = None
-    manufacturer: str | None = None
-    model: str | None = None
+    type: str | None = Field(default=None, max_length=100)
+    asset_name: str | None = Field(default=None, max_length=255)
+    category: str | None = Field(default=None, max_length=100)
+    internal_inventory_number: str | None = Field(default=None, max_length=100)
+    brand: str | None = Field(default=None, max_length=100)
+    manufacturer: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=150)
     ram_mb: int | None = Field(default=None, ge=0)
-    cpu_name: str | None = None
-    gpu_name: str | None = None
-    os_name: str | None = None
-    os_version: str | None = None
-    bios_version: str | None = None
-    serial_number: str | None = None
-    hostname: str | None = None
-    ip_address: str | None = None
-    location: str | None = None
-    building: str | None = None
-    room: str | None = None
-    desk: str | None = None
-    rack: str | None = None
-    rack_unit: str | None = None
-    org_unit: str | None = None
-    status: str | None = None
-    vendor_name: str | None = None
-    currency: str | None = None
-    invoice_number: str | None = None
+    cpu_name: str | None = Field(default=None, max_length=255)
+    gpu_name: str | None = Field(default=None, max_length=255)
+    os_name: str | None = Field(default=None, max_length=255)
+    os_version: str | None = Field(default=None, max_length=255)
+    bios_version: str | None = Field(default=None, max_length=255)
+    serial_number: str | None = Field(default=None, max_length=150)
+    hostname: str | None = Field(default=None, max_length=255)
+    ip_address: str | None = Field(default=None, max_length=255)
+    location: str | None = Field(default=None, max_length=150)
+    building: str | None = Field(default=None, max_length=150)
+    room: str | None = Field(default=None, max_length=150)
+    desk: str | None = Field(default=None, max_length=150)
+    rack: str | None = Field(default=None, max_length=100)
+    rack_unit: str | None = Field(default=None, max_length=50)
+    org_unit: str | None = Field(default=None, max_length=150)
+    status: str | None = Field(default=None, max_length=50)
+    vendor_name: str | None = Field(default=None, max_length=150)
+    currency: str | None = Field(default=None, max_length=10)
+    invoice_number: str | None = Field(default=None, max_length=100)
     purchase_date: date | None = None
     purchase_price: float | None = Field(default=None, ge=0)
     warranty_expiration_date: date | None = None
     support_expiration_date: date | None = None
-    invoice_path: str | None = None
+    invoice_path: str | None = Field(default=None, max_length=500)
     specifications: dict[str, Any] | None = None
     notes: str | None = None
 
@@ -72,54 +86,59 @@ class AssetBase(BaseModel):
 class AssetCreate(AssetBase):
     """Fields accepted when creating an asset."""
 
-    pass
+    cpu_cores: int | None = Field(default=None, ge=0)
+    logical_cpu_cores: int | None = Field(default=None, ge=0)
+    architecture: str | None = Field(default=None, max_length=100)
 
 
-class AssetUpdate(BaseModel):
+class AssetUpdate(AssetValidationModel):
     """Partial asset update; omitted fields remain unchanged."""
 
     asset_tag: str | None = Field(default=None, min_length=1, max_length=100)
     type: str | None = Field(default=None, min_length=1, max_length=100)
-    asset_name: str | None = None
-    category: str | None = None
-    internal_inventory_number: str | None = None
-    brand: str | None = None
-    manufacturer: str | None = None
-    model: str | None = None
+    asset_name: str | None = Field(default=None, max_length=255)
+    category: str | None = Field(default=None, max_length=100)
+    internal_inventory_number: str | None = Field(default=None, max_length=100)
+    brand: str | None = Field(default=None, max_length=100)
+    manufacturer: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=150)
     ram_mb: int | None = Field(default=None, ge=0)
-    cpu_name: str | None = None
-    gpu_name: str | None = None
-    os_name: str | None = None
-    os_version: str | None = None
-    bios_version: str | None = None
-    serial_number: str | None = None
-    hostname: str | None = None
-    ip_address: str | None = None
-    location: str | None = None
-    building: str | None = None
-    room: str | None = None
-    desk: str | None = None
-    rack: str | None = None
-    rack_unit: str | None = None
-    org_unit: str | None = None
-    status: str | None = None
-    vendor_name: str | None = None
-    currency: str | None = None
-    invoice_number: str | None = None
+    cpu_name: str | None = Field(default=None, max_length=255)
+    gpu_name: str | None = Field(default=None, max_length=255)
+    os_name: str | None = Field(default=None, max_length=255)
+    os_version: str | None = Field(default=None, max_length=255)
+    bios_version: str | None = Field(default=None, max_length=255)
+    serial_number: str | None = Field(default=None, max_length=150)
+    hostname: str | None = Field(default=None, max_length=255)
+    ip_address: str | None = Field(default=None, max_length=255)
+    location: str | None = Field(default=None, max_length=150)
+    building: str | None = Field(default=None, max_length=150)
+    room: str | None = Field(default=None, max_length=150)
+    desk: str | None = Field(default=None, max_length=150)
+    rack: str | None = Field(default=None, max_length=100)
+    rack_unit: str | None = Field(default=None, max_length=50)
+    org_unit: str | None = Field(default=None, max_length=150)
+    status: str | None = Field(default=None, max_length=50)
+    vendor_name: str | None = Field(default=None, max_length=150)
+    currency: str | None = Field(default=None, max_length=10)
+    invoice_number: str | None = Field(default=None, max_length=100)
     purchase_date: date | None = None
     purchase_price: float | None = Field(default=None, ge=0)
     warranty_expiration_date: date | None = None
     support_expiration_date: date | None = None
-    invoice_path: str | None = None
+    invoice_path: str | None = Field(default=None, max_length=500)
     specifications: dict[str, Any] | None = None
     notes: str | None = None
+    cpu_cores: int | None = Field(default=None, ge=0)
+    logical_cpu_cores: int | None = Field(default=None, ge=0)
+    architecture: str | None = Field(default=None, max_length=100)
 
 
 class AssetRead(ORMModel, AssetBase):
     """Asset response including current custodian information."""
 
     id: int
-    asset_tag: str
+    asset_tag: str | None = None
     created_at: datetime
     updated_at: datetime
     custodian: PersonSummary | None = None
@@ -215,6 +234,7 @@ class ExtractCandidate(BaseModel):
     confidence: Literal["high", "medium", "low"]
     target: Literal["asset", "spec"] = "asset"
     source: str
+    source_file: str | None = None
 
 
 class ExtractProvider(BaseModel):
@@ -226,11 +246,33 @@ class ExtractProvider(BaseModel):
     retentionPolicy: str
 
 
-class ExtractResponse(BaseModel):
-    """Field candidates extracted from a user-supplied report."""
+class ExtractSource(BaseModel):
+    """Classification result for one supplied report."""
 
+    filename: str
+    format: str
     provider: ExtractProvider
-    candidates: list[ExtractCandidate]
+    parsed_fields: dict[str, Any]
+
+
+class ExtractIssue(BaseModel):
+    """A per-file extraction warning or error."""
+
+    filename: str
+    message: str
+
+
+class ExtractResponse(BaseModel):
+    """Structured local extraction result with legacy candidate compatibility."""
+
+    success: bool = True
+    parsed_fields: dict[str, Any] = Field(default_factory=dict)
+    sources: list[ExtractSource] = Field(default_factory=list)
+    warnings: list[ExtractIssue] = Field(default_factory=list)
+    unmapped: dict[str, list[str]] = Field(default_factory=dict)
+    errors: list[ExtractIssue] = Field(default_factory=list)
+    provider: ExtractProvider | None = None
+    candidates: list[ExtractCandidate] = Field(default_factory=list)
 
 
 class TargetCreate(BaseModel):

@@ -54,15 +54,25 @@ def test_create_asset_generates_sequential_tags_and_null_status() -> None:
     headers = login(client)
 
     first = client.post("/api/v1/assets", headers=headers, json={"type": "laptop", "status": ""})
-    assert first.status_code in (200, 201)
+    assert first.status_code == 201
     assert first.json()["asset_tag"] == "LAP-0001"
     assert first.json()["status"] is None
+    assert first.json()["type"] == "laptop"
 
     second = client.post("/api/v1/assets", headers=headers, json={"type": "laptop"})
+    assert second.status_code == 201
     assert second.json()["asset_tag"] == "LAP-0002"
+    assert second.json()["type"] == "laptop"
 
     missing = client.post("/api/v1/assets", headers=headers, json={"asset_tag": "XXX-1234"})
-    assert missing.status_code == 422
+    assert missing.status_code == 201
+    assert missing.json()["asset_tag"] == "XXX-1234"
+    assert missing.json()["type"] is None
+
+    empty = client.post("/api/v1/assets", headers=headers, json={})
+    assert empty.status_code == 201
+    assert empty.json()["asset_tag"] is None
+    assert empty.json()["type"] is None
 
 
 def test_asset_tag_validation_and_suggestion() -> None:
@@ -176,7 +186,10 @@ def test_spec_extract_endpoint() -> None:
     assert {c["key"] for c in body["candidates"]} >= {"hostname", "manufacturer", "ram_mb"}
 
     unknown = client.post("/api/v1/spec-extract", headers=headers, data={"text": "hello world"})
-    assert unknown.status_code == 422
+    assert unknown.status_code == 200
+    assert unknown.json()["success"] is False
+    assert unknown.json()["warnings"][0]["filename"] == "pasted.txt"
+    assert unknown.json()["errors"]
 
     assert client.post("/api/v1/spec-extract", data={"text": SYSTEMINFO_SAMPLE}).status_code == 401
 
@@ -197,7 +210,7 @@ def test_spec_extract_accepts_log_files() -> None:
     txt_upload = client.post(
         "/api/v1/spec-extract",
         headers=headers,
-        files={"file": ("system.txt", SYSTEMINFO_SAMPLE.encode("utf-8"), "text/plain")},
+        files={"file": ("SYSTEM.TXT", SYSTEMINFO_SAMPLE.encode("utf-8"), "text/plain")},
     )
     assert txt_upload.status_code == 200
 
@@ -207,6 +220,60 @@ def test_spec_extract_accepts_log_files() -> None:
         files={"file": ("system.exe", SYSTEMINFO_SAMPLE.encode("utf-8"), "application/octet-stream")},
     )
     assert bad_ext.status_code == 415
+
+
+def test_spec_extract_batch_is_partial_and_structured() -> None:
+    client, _ = build_app()
+    headers = login(client)
+    utf16_report = SYSTEMINFO_SAMPLE.encode("utf-16")
+    ipconfig = (
+        "Windows IP Configuration\r\n"
+        "Ethernet adapter Ethernet:\r\n"
+        " IPv4 Address. . . . . . . . . . . : 192.0.2.88\r\n"
+        " Default Gateway . . . . . . . . . : 192.0.2.1\r\n"
+    )
+
+    response = client.post(
+        "/api/v1/spec-extract",
+        headers=headers,
+        files=[
+            ("files", ("SYSTEMINFO.TXT", utf16_report, "text/plain")),
+            ("files", ("ipconfig.log", ipconfig.encode("utf-8"), "text/plain")),
+            ("files", ("unsupported.txt", b"hello world", "text/plain")),
+        ],
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert len(body["sources"]) == 2
+    assert body["parsed_fields"]["hostname"] == "OFFICE-1"
+    assert body["parsed_fields"]["ip_address"] == "192.0.2.88"
+    assert any(item["filename"] == "unsupported.txt" for item in body["warnings"])
+    assert body["errors"] == []
+
+
+def test_edit_updates_existing_asset_without_duplicate() -> None:
+    client, _ = build_app()
+    headers = login(client)
+    created = client.post(
+        "/api/v1/assets",
+        headers=headers,
+        json={"type": "laptop", "asset_name": "Before"},
+    ).json()
+
+    updated = client.patch(
+        f"/api/v1/assets/{str(created['id'])}",
+        headers=headers,
+        json={"asset_name": "After", "status": None},
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["id"] == created["id"]
+    assert updated.json()["asset_name"] == "After"
+    assets = client.get("/api/v1/assets", headers=headers).json()
+    assert len(assets) == 1
+    assert assets[0]["asset_name"] == "After"
 
 
 def test_collector_scripts_downloadable() -> None:

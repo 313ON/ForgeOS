@@ -5,7 +5,14 @@ from typing import Literal
 
 from forge.runtime.hardware import GIB, HardwareInfo, classify_machine
 
-SourceType = Literal["dxdiag", "systeminfo"]
+SourceType = Literal[
+    "dxdiag",
+    "systeminfo",
+    "forgeos_collector",
+    "collector_ipconfig",
+    "collector_memory",
+    "collector_storage",
+]
 ParsedSystemInfo = dict[str, str | int | None]
 
 EMPTY_RESULT: ParsedSystemInfo = {
@@ -29,26 +36,79 @@ def decode_report(content: bytes) -> str:
     """Decode common Windows report encodings without external dependencies."""
     if not content:
         return ""
-    for encoding in ("utf-8-sig", "utf-16", "cp1252"):
+    if content.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return content.decode("utf-16")
+    if b"\x00" in content[:256]:
+        for encoding in ("utf-16-le", "utf-16-be"):
+            try:
+                return content.decode(encoding).lstrip("\ufeff")
+            except UnicodeDecodeError:
+                continue
+    for encoding in ("utf-8-sig", "cp1252"):
         try:
             return content.decode(encoding)
-        except (UnicodeDecodeError, UnicodeError):
+        except UnicodeDecodeError:
             continue
     return content.decode("utf-8", errors="replace")
 
 
 def detect_source(filename: str, text: str) -> SourceType | None:
-    """Detect whether a report is DxDiag or systeminfo output."""
-    normalized_name = filename.casefold()
-    normalized_text = text.casefold()
-    if "dxdiag" in normalized_name or "dxdiag notes" in normalized_text:
+    """Classify supported Windows reports using content, with filename as a hint."""
+    normalized_name = filename.strip().casefold()
+    normalized_text = text.lstrip("\ufeff \t\r\n").casefold()
+    keys = set(_key_value_lines(text))
+
+    dxdiag_markers = (
+        "directx diagnostic tool",
+        "dxdiag notes",
+        "directx version:",
+        "card name:",
+    )
+    if any(marker in normalized_text for marker in dxdiag_markers):
         return "dxdiag"
-    if "systeminfo" in normalized_name:
-        return "systeminfo"
-    if "system manufacturer:" in normalized_text or "os name:" in normalized_text:
-        return "systeminfo"
-    if "directx version:" in normalized_text or "card name:" in normalized_text:
+    if {"machine name", "operating system", "processor"} <= keys:
         return "dxdiag"
+
+    collector_keys = {
+        "host name",
+        "processor name",
+        "number of cores",
+        "number of logical processors",
+        "gpu name",
+        "ip address",
+    }
+    if "forgeos system report" in normalized_text or len(keys & collector_keys) >= 3:
+        return "forgeos_collector"
+
+    systeminfo_keys = {
+        "host name",
+        "os name",
+        "os version",
+        "system manufacturer",
+        "system model",
+        "total physical memory",
+        "processor(s)",
+        "bios version",
+    }
+    if len(keys & systeminfo_keys) >= 2:
+        return "systeminfo"
+
+    if "windows ip configuration" in normalized_text or (
+        "ipv4 address" in normalized_text and "default gateway" in normalized_text
+    ):
+        return "collector_ipconfig"
+    if _looks_like_memory_fragment(normalized_name, normalized_text, keys):
+        return "collector_memory"
+    if _looks_like_storage_fragment(normalized_name, normalized_text, keys):
+        return "collector_storage"
+
+    colon_lines = sum(1 for line in text.splitlines() if ":" in line)
+    if (
+        ("systeminfo" in normalized_name or "forgeos_system_report" in normalized_name)
+        and colon_lines >= 4
+        and ("windows" in normalized_text or "bios" in normalized_text)
+    ):
+        return "systeminfo"
     return None
 
 
@@ -56,6 +116,12 @@ def parse_report(source: SourceType, text: str) -> ParsedSystemInfo:
     """Parse a supported report using the matching offline parser."""
     if source == "dxdiag":
         return parse_dxdiag(text)
+    if source == "collector_ipconfig":
+        return parse_ipconfig(text)
+    if source == "collector_memory":
+        return parse_memory_fragment(text)
+    if source == "collector_storage":
+        return dict(EMPTY_RESULT)
     return parse_systeminfo(text)
 
 
@@ -119,6 +185,32 @@ def parse_systeminfo(text: str) -> ParsedSystemInfo:
         "gpu name",
     )
     result["cpu_name"] = _systeminfo_processor_name(text, fields)
+    if result["ip_address"] is None:
+        result["ip_address"] = _first_ipv4(text)
+    return result
+
+
+def parse_ipconfig(text: str) -> ParsedSystemInfo:
+    """Extract the first usable IPv4 address from an ipconfig fragment."""
+    result = dict(EMPTY_RESULT)
+    result["ip_address"] = _first_ipv4(text)
+    return result
+
+
+def parse_memory_fragment(text: str) -> ParsedSystemInfo:
+    """Extract installed memory from collector memory output."""
+    result = dict(EMPTY_RESULT)
+    capacities = [
+        int(value)
+        for value in re.findall(r"(?im)^\s*capacity\s*[:=]\s*(\d+)\s*$", text)
+    ]
+    if capacities:
+        result["ram_mb"] = round(sum(capacities) / 1024**2)
+        return result
+    fields = _key_value_lines(text)
+    result["ram_mb"] = _parse_memory_mb(
+        _first(fields, "total physical memory", "physical memory", "mem")
+    )
     return result
 
 
@@ -223,3 +315,44 @@ def _positive_int(value: object, default: int = 1) -> int:
         return max(default, int(value))
     except (TypeError, ValueError):
         return default
+
+
+def _first_ipv4(text: str) -> str | None:
+    for match in re.finditer(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])", text):
+        address = match.group(1)
+        octets = [int(part) for part in address.split(".")]
+        if any(part > 255 for part in octets):
+            continue
+        if address.startswith(("127.", "169.254.")) or address == "0.0.0.0":
+            continue
+        return address
+    return None
+
+
+def _looks_like_memory_fragment(
+    filename: str,
+    text: str,
+    keys: set[str],
+) -> bool:
+    has_memory_fields = "capacity" in keys and bool(
+        {"manufacturer", "partnumber", "part number", "speed"} & keys
+    )
+    return has_memory_fields or (
+        "memory" in filename
+        and ("capacity" in text or "mem:" in text or "total physical memory" in text)
+    )
+
+
+def _looks_like_storage_fragment(
+    filename: str,
+    text: str,
+    keys: set[str],
+) -> bool:
+    has_storage_fields = len(
+        keys & {"model", "serialnumber", "serial number", "mediatype", "media type", "size"}
+    ) >= 2
+    has_lsblk_header = bool(re.search(r"(?im)^\s*name\s+size\s+type\b", text))
+    return has_storage_fields or (
+        any(hint in filename for hint in ("storage", "disk", "lsblk"))
+        and (has_lsblk_header or "size" in text)
+    )

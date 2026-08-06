@@ -21,7 +21,7 @@ from ..domain.schemas import (
 from ..services.ai_agent import query_asset_insights
 from ..services.auth import AuthenticatedUser, UserRole, create_access_token, get_current_user, hash_password, require_admin, verify_password
 from ..services.asset_tags import generate_asset_tag, validate_manual_tag
-from ..services.extraction import extract_fields
+from ..services.extraction import extract_reports
 from ..services.ingestion import decode_report, detect_source, parse_report, suggest_hardware_profile
 from ..services.monitoring import check_target, json_metadata, now_utc
 from ..services.reports import asset_report_rows, create_excel_report, create_pdf_report
@@ -30,12 +30,55 @@ from forge.runtime.storage.file_store import content_type_for, resolve_invoice, 
 logger = logging.getLogger("forgeos.api")
 router = APIRouter(prefix="/api/v1")
 compat_router = APIRouter(prefix="/api")
+REPORT_EXTENSIONS = (".txt", ".log")
+MAX_REPORT_BYTES = 5 * 1024 * 1024
+LEGACY_SPEC_FIELDS = ("cpu_cores", "logical_cpu_cores", "architecture")
 
 
 def active_assignment_filter() -> Any:
     """Return the canonical active-assignment predicate."""
     today = date.today()
     return or_(Assignment.end_date.is_(None), Assignment.end_date >= today)
+
+
+def _normalize_asset_values(values: dict[str, Any]) -> dict[str, Any]:
+    """Normalize user-entered asset values before persistence."""
+    specifications = dict(values.get("specifications") or {})
+    for key in LEGACY_SPEC_FIELDS:
+        value = values.pop(key, None)
+        if value is not None and key not in specifications:
+            specifications[key] = value
+    if specifications:
+        values["specifications"] = specifications
+
+    normalized: dict[str, Any] = {}
+    for key, value in values.items():
+        if isinstance(value, str):
+            value = value.strip() or None
+        normalized[key] = value
+    if normalized.get("currency"):
+        normalized["currency"] = normalized["currency"].upper()
+    if normalized.get("status"):
+        normalized["status"] = normalized["status"].casefold()
+    if "specifications" in normalized:
+        specifications = normalized["specifications"]
+        normalized["specifications"] = (
+            json.dumps(specifications, ensure_ascii=False) if specifications else None
+        )
+    return normalized
+
+
+async def _read_report_upload(file: UploadFile) -> tuple[str, str]:
+    """Validate and decode a supported report upload."""
+    filename = file.filename or "report.txt"
+    if not filename.casefold().endswith(REPORT_EXTENSIONS):
+        raise HTTPException(415, "Only .txt and .log reports are supported")
+    content = await file.read()
+    if len(content) > MAX_REPORT_BYTES:
+        raise HTTPException(413, "Report exceeds the 5 MB upload limit")
+    if not content:
+        raise HTTPException(422, "Report file is empty")
+    return filename, decode_report(content)
 
 
 @router.get("/health")
@@ -172,13 +215,8 @@ def list_assets(
 @router.post("/assets", response_model=AssetRead, status_code=status.HTTP_201_CREATED)
 def create_asset(payload: AssetCreate, db: Session = Depends(get_db), _: AuthenticatedUser = Depends(require_admin)) -> dict[str, Any]:
     """Create an asset, generating a tag when omitted."""
-    values = payload.model_dump()
-    values["type"] = (values.get("type") or "").strip()
-    if not values["type"]:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "type is required")
-    values["status"] = (values.get("status") or "").strip() or None
-    specifications = values.pop("specifications", None)
-    values["specifications"] = json.dumps(specifications, ensure_ascii=False) if specifications else None
+    values = _normalize_asset_values(payload.model_dump())
+    # Allow creating assets without a user-supplied `type` or `asset_tag`.
     tag = values.pop("asset_tag", None)
     if tag:
         try:
@@ -186,7 +224,11 @@ def create_asset(payload: AssetCreate, db: Session = Depends(get_db), _: Authent
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     else:
-        values["asset_tag"] = generate_asset_tag(db, values["type"])
+        # Only generate a tag when a type is provided; otherwise leave tag null.
+        if values.get("type"):
+            values["asset_tag"] = generate_asset_tag(db, values["type"])
+        else:
+            values["asset_tag"] = None
     asset = Asset(**values)
     db.add(asset)
     _commit_or_conflict(db, "Asset tag already exists")
@@ -231,28 +273,23 @@ def asset_tag_valid(
 @router.post("/spec-extract", response_model=ExtractResponse)
 async def spec_extract(
     file: UploadFile | None = File(default=None),
+    files: list[UploadFile] | None = File(default=None),
     text: str | None = Form(default=None),
     db: Session = Depends(get_db),
     _: AuthenticatedUser = Depends(get_current_user),
 ) -> ExtractResponse:
     """Extract candidate asset fields from a user-supplied report (upload or paste)."""
+    reports: list[tuple[str, str]] = []
+    uploads = list(files or [])
     if file is not None:
-        if not (file.filename or "").casefold().endswith((".txt", ".log")):
-            raise HTTPException(415, "Only .txt and .log reports are supported")
-        content = await file.read()
-        if len(content) > 5 * 1024 * 1024:
-            raise HTTPException(413, "Report exceeds the 5 MB upload limit")
-        raw = decode_report(content)
-        filename = file.filename or "report.txt"
-    elif text is not None and text.strip():
-        raw = text
-        filename = "report.txt"
-    else:
+        uploads.insert(0, file)
+    for upload in uploads:
+        reports.append(await _read_report_upload(upload))
+    if text is not None and text.strip():
+        reports.append(("pasted.txt", text))
+    if not reports:
         raise HTTPException(422, "Provide a report file or paste report text")
-    result = extract_fields(raw, filename)
-    if result is None:
-        raise HTTPException(422, "Unable to identify report format (DxDiag, systeminfo, or Linux text supported)")
-    return result
+    return extract_reports(reports)
 
 
 @router.get("/assets/{asset_id}", response_model=AssetRead)
@@ -265,18 +302,21 @@ def get_asset(asset_id: int, db: Session = Depends(get_db), _: AuthenticatedUser
 def update_asset(asset_id: int, payload: AssetUpdate, db: Session = Depends(get_db), _: AuthenticatedUser = Depends(require_admin)) -> dict[str, Any]:
     """Apply a partial update without regenerating the asset tag."""
     asset = _get_or_404(db, Asset, asset_id, "Asset")
-    for key, value in payload.model_dump(exclude_unset=True).items():
-        if value is None and key in ("asset_tag", "type"):
-            continue
+    raw_values = payload.model_dump(exclude_unset=True)
+    if "specifications" not in raw_values and any(key in raw_values for key in LEGACY_SPEC_FIELDS):
+        try:
+            raw_values["specifications"] = json.loads(asset.specifications) if asset.specifications else {}
+        except (TypeError, json.JSONDecodeError):
+            raw_values["specifications"] = {}
+    values = _normalize_asset_values(raw_values)
+    for key, value in values.items():
+        # Allow clearing `asset_tag` and `type` by accepting explicit null values.
         if key == "asset_tag":
-            try:
-                value = validate_manual_tag(value)
-            except ValueError as exc:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-        if key == "status" and value is not None:
-            value = value.strip() or None
-        if key == "specifications":
-            value = json.dumps(value, ensure_ascii=False) if value else None
+            if value:
+                try:
+                    value = validate_manual_tag(value)
+                except ValueError as exc:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
         setattr(asset, key, value)
     _commit_or_conflict(db, "Asset tag already exists")
     db.refresh(asset)
@@ -376,15 +416,9 @@ def unassign_asset(asset_id: int, db: Session = Depends(get_db), _: Authenticate
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_report(file: UploadFile = File(...), asset_id: int | None = Form(default=None), db: Session = Depends(get_db), _: AuthenticatedUser = Depends(require_admin)) -> IngestResponse:
     """Parse and persist an uploaded DxDiag or systeminfo report."""
-    filename = file.filename or "report.txt"
-    if not filename.casefold().endswith(".txt"):
-        raise HTTPException(415, "Only .txt reports are supported")
+    filename, text = await _read_report_upload(file)
     if asset_id is not None:
         _get_or_404(db, Asset, asset_id, "Asset")
-    content = await file.read()
-    if len(content) > 5 * 1024 * 1024:
-        raise HTTPException(413, "Report exceeds the 5 MB upload limit")
-    text = decode_report(content)
     source = detect_source(filename, text)
     if source is None:
         raise HTTPException(422, "Unable to identify report as DxDiag or systeminfo")

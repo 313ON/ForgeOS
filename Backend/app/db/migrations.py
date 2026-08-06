@@ -92,6 +92,7 @@ def migrate_asset_columns(engine: Engine) -> list[str]:
     added.extend(_migrate_legacy_target_status_constraint(engine))
     added.extend(_repair_dangling_network_logs_fk(engine))
     added.extend(_make_asset_status_nullable(engine))
+    added.extend(_make_asset_tag_and_type_nullable(engine))
     with engine.begin() as connection:
         connection.execute(
             text("UPDATE assets SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL")
@@ -360,3 +361,66 @@ def migrate_export_log_table(engine: Engine) -> list[str]:
         )
         added.append("export_logs")
     return added
+
+
+def _make_asset_tag_and_type_nullable(engine: Engine) -> list[str]:
+    """Rebuild the assets table to allow NULL for asset_tag and type when declared NOT NULL.
+
+    This mirrors the pattern used for `_make_asset_status_nullable` and is idempotent.
+    """
+    inspector = inspect(engine)
+    if "assets" not in inspector.get_table_names():
+        return []
+    # Check if either column is non-nullable and needs migration
+    cols = {column["name"]: column for column in inspector.get_columns("assets")}
+    asset_tag_col = cols.get("asset_tag")
+    type_col = cols.get("type")
+    if (asset_tag_col is None or asset_tag_col.get("nullable", True)) and (type_col is None or type_col.get("nullable", True)):
+        return []
+
+    connection = engine.raw_connection()
+    try:
+        connection.execute("PRAGMA foreign_keys=OFF")
+        connection.execute("PRAGMA legacy_alter_table=ON")
+        cursor = connection.cursor()
+        columns = [row[1] for row in cursor.execute("PRAGMA table_info(assets)").fetchall()]
+        table_sql = cursor.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'assets'"
+        ).fetchone()[0]
+
+        rebuilt_sql = table_sql
+        # Remove NOT NULL from asset_tag and type column definitions if present
+        rebuilt_sql = re.sub(r"(?i)(asset_tag\s+[^,]+?)\s+NOT\s+NULL\b", r"\1", rebuilt_sql, count=1)
+        rebuilt_sql = re.sub(r"(?i)(type\s+[^,]+?)\s+NOT\s+NULL\b", r"\1", rebuilt_sql, count=1)
+
+        if rebuilt_sql == table_sql:
+            # Nothing changed
+            return []
+
+        index_defs = cursor.execute(
+            "SELECT name, sql FROM sqlite_master "
+            "WHERE type = 'index' AND tbl_name = 'assets' AND sql IS NOT NULL "
+            "AND name NOT LIKE 'sqlite_autoindex%'"
+        ).fetchall()
+        index_columns = {
+            name: [row[2] for row in cursor.execute(f"PRAGMA index_info('{name}')").fetchall()]
+            for name, _ in index_defs
+        }
+        column_list = ", ".join(columns)
+        cursor.execute("ALTER TABLE assets RENAME TO assets_legacy")
+        cursor.execute(rebuilt_sql)
+        cursor.execute(f"INSERT INTO assets ({column_list}) SELECT {column_list} FROM assets_legacy")
+        cursor.execute("DROP TABLE assets_legacy")
+        new_columns = {row[1] for row in cursor.execute("PRAGMA table_info(assets)").fetchall()}
+        for name, sql in index_defs:
+            if all(column in new_columns for column in index_columns[name]):
+                cursor.execute(sql)
+        connection.commit()
+        return ["assets.asset_tag_type_nullable"]
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.execute("PRAGMA legacy_alter_table=OFF")
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.close()

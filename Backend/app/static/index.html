@@ -23,6 +23,14 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     [x-cloak] { display: none !important; }
+    :root { color-scheme: dark; }
+    body { background: #070b12; }
+    button, a, input, select, textarea { transition-property: color, background-color, border-color, opacity, box-shadow, transform; transition-duration: 150ms; }
+    button:not(:disabled):active, a:active { transform: scale(0.96); }
+    :focus-visible { outline: 2px solid rgba(45, 212, 191, 0.75); outline-offset: 2px; }
+    .enterprise-panel { border: 1px solid rgba(51, 65, 85, 0.78); background: rgba(15, 23, 42, 0.72); box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18); }
+    .form-section { border: 1px solid rgba(51, 65, 85, 0.72); background: rgba(2, 6, 23, 0.34); }
+    .empty-state { border: 1px dashed rgba(71, 85, 105, 0.72); background: rgba(15, 23, 42, 0.42); }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #020617; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
@@ -253,7 +261,7 @@
                       <td class="px-5 py-4 text-slate-400" x-text="asset.location || '—'"></td>
                       <td class="px-5 py-4">
                         <span x-show="(asset.status || '').trim()" class="rounded-full px-2.5 py-1 text-xs font-medium capitalize" :class="statusClass(asset.status)" x-text="(asset.status || '').trim()"></span>
-                        <span x-show="!(asset.status || '').trim()" class="rounded-full px-2.5 py-1 text-xs font-medium text-slate-600">—</span>
+                        <span x-show="!(asset.status || '').trim()" class="rounded-full border border-slate-700 bg-slate-800/70 px-2.5 py-1 text-xs font-medium text-slate-400">Unspecified</span>
                       </td>
                       <td class="px-5 py-4">
                         <button x-show="asset.invoice_path" @click="downloadInvoice(asset)" class="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-2.5 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20">
@@ -311,6 +319,13 @@
                 </div>
               </div>
             </template>
+          </div>
+          <div x-show="!people.length && !loading" class="empty-state rounded-2xl px-6 py-16 text-center">
+            <div class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-800/80 text-slate-500">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M16 4.5a4 4 0 0 1 0 7.5M18 15a6 6 0 0 1 3.5 6"/></svg>
+            </div>
+            <p class="mt-4 font-medium text-slate-300">No custodians registered</p>
+            <p class="mt-2 text-sm text-slate-600">Add a person to begin assigning and tracking asset ownership.</p>
           </div>
         </section>
 
@@ -430,6 +445,10 @@
             <input x-model="userSearch" type="search" placeholder="Search users..." class="mb-4 w-full max-w-sm rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white">
             <div class="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60">
               <template x-for="user in filteredUsers" :key="user.id"><div class="flex items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4"><div><span class="font-medium text-white" x-text="user.username"></span><p class="mt-1 text-xs" :class="user.is_active ? 'text-emerald-300' : 'text-slate-600'" x-text="user.is_active ? 'Active' : 'Inactive'"></p></div><div class="flex items-center gap-2"><span class="rounded-full bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-300" x-text="user.role"></span><button @click="editUser(user)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs text-amber-300">Edit</button><button x-show="user.id !== currentUser?.id" @click="deleteUser(user)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs text-rose-300">Delete</button></div></div></template>
+              <div x-show="!filteredUsers.length" class="empty-state m-4 rounded-xl px-5 py-10 text-center">
+                <p class="font-medium text-slate-300">No matching users</p>
+                <p class="mt-2 text-sm text-slate-600">Create an operator account or clear the current search.</p>
+              </div>
             </div>
           </div>
         </section>
@@ -542,10 +561,15 @@
     </div>
   </div>
 
-  <div x-show="assetModal" x-cloak @keydown.escape.window="assetModal = false" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4 backdrop-blur-sm">
-    <div @click.outside="assetModal = false" x-transition class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+  <div x-show="assetModal" x-cloak @keydown.escape.window="assetModal = false" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/85 p-4 backdrop-blur-sm"
+       x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-out duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+    <div @click.outside="assetModal = false" role="dialog" aria-modal="true" aria-labelledby="asset-modal-title"
+         class="enterprise-panel max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl p-6 sm:p-7"
+         x-transition:enter="transition ease-out duration-150" x-transition:enter-start="translate-y-2 opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transition ease-out duration-100" x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-1 opacity-0">
       <div class="flex items-start justify-between gap-3">
-        <div><h3 class="text-lg font-semibold text-white" x-text="editingAssetId ? 'Edit Asset' : translated('modal.new_asset', 'Register New Asset')"></h3><p class="mt-1 text-sm text-slate-500" x-text="editingAssetId ? 'Update the details of this device in the operational inventory.' : translated('modal.new_asset_help', 'Add a device to the operational inventory.')"></p></div>
+        <div><p class="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">Asset Registry</p><h3 id="asset-modal-title" class="mt-1 text-xl font-semibold text-white" x-text="editingAssetId ? 'Edit Asset' : translated('modal.new_asset', 'Register New Asset')"></h3><p class="mt-1 text-sm text-slate-400" x-text="editingAssetId ? 'Update the operational record. Existing values remain isolated until you save.' : translated('modal.new_asset_help', 'Add a device to the operational inventory.')"></p></div>
         <div class="flex shrink-0 items-center gap-2">
           <button @click="openExtractModal()" class="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-3 py-2 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20" title="Extract from report files">
             <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
@@ -558,50 +582,67 @@
           <button @click="assetModal = false" class="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-white">✕</button>
         </div>
       </div>
-      <form @submit.prevent="saveAsset()" class="mt-6 grid gap-4 sm:grid-cols-2">
-        <template x-for="field in assetFields" :key="field.key || field.specKey">
-          <template x-if="field.section">
-            <div x-show="sectionVisible(field.section)" class="mt-3 border-t border-slate-800 pt-4 sm:col-span-2">
-              <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h4 class="text-sm font-semibold text-white" x-text="field.section"></h4>
-                <span x-show="!manualMode" class="text-[11px] text-slate-500">Automated extraction from a computer/device (depending on device type) will populate these later.</span>
-                <span x-show="manualMode" class="text-[11px] text-emerald-300">Manual mode — all fields are editable.</span>
+      <form @submit.prevent="saveAsset()" class="mt-6 space-y-4">
+        <template x-for="group in visibleAssetGroups" :key="group.name">
+          <section x-show="sectionVisible(group.name)" class="form-section rounded-2xl p-4 sm:p-5">
+            <div class="mb-4 flex flex-col justify-between gap-2 border-b border-slate-800/70 pb-3 sm:flex-row sm:items-start">
+              <div>
+                <h4 class="text-sm font-semibold text-white" x-text="group.name"></h4>
+                <p class="mt-1 text-xs leading-5 text-slate-500" x-text="sectionDescription(group.name)"></p>
               </div>
+              <span x-show="manualMode && group.specialized" class="shrink-0 rounded-full bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">Manual fields</span>
             </div>
-          </template>
-          <div x-show="fieldAssetShown(field)" :class="field.wide ? 'sm:col-span-2' : ''">
-            <div class="mb-2 flex items-center justify-between gap-2">
-              <span class="block text-xs font-medium uppercase tracking-wider text-slate-500" x-text="field.label"></span>
-              <label x-show="field.unknown" class="flex cursor-pointer items-center gap-1.5">
-                <input type="checkbox" x-model="assetUnknown[field.key]" @change="onAssetUnknownToggle(field)">
-                <span class="text-[11px] text-slate-500">Unknown</span>
-              </label>
-            </div>
-            <textarea x-show="field.textarea" :value="assetFieldValue(field)" rows="3" :required="field.required" :disabled="assetUnknown[field.key]" @input="onAssetFieldInput(field, $event)" @change="onAssetFieldChange(field)"
-                      class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50 disabled:opacity-40"></textarea>
-            <select x-show="field.select" :value="assetFieldValue(field)" :disabled="assetUnknown[field.key]" @change="onAssetFieldSelect(field, $event)"
-                    class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50 disabled:opacity-40">
-              <option value="" x-text="field.key === 'status' ? 'Status' : ''"></option>
-              <template x-for="option in assetStatusOptions" :key="option">
-                <option :value="option" x-text="option"></option>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <template x-for="field in group.fields" :key="field.key || field.specKey">
+                <label :class="field.wide ? 'sm:col-span-2' : ''">
+                  <span class="mb-2 flex items-center justify-between gap-2">
+                    <span class="block text-xs font-medium uppercase tracking-wider text-slate-400" x-text="field.label"></span>
+                    <span x-show="field.unknown" class="flex cursor-pointer items-center gap-1.5">
+                      <input type="checkbox" x-model="assetUnknown[field.key]" @change="onAssetUnknownToggle(field)">
+                      <span class="text-[11px] text-slate-500">Unknown</span>
+                    </span>
+                  </span>
+                  <textarea x-show="field.textarea" :value="assetFieldValue(field)" rows="3" :required="field.required" @input="onAssetFieldInput(field, $event)" @change="onAssetFieldChange(field)"
+                            class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10"></textarea>
+                  <select x-show="field.select" :value="assetFieldValue(field)" @change="onAssetFieldSelect(field, $event)"
+                          class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                    <option value="" x-text="field.key === 'status' ? 'Select status' : ''"></option>
+                    <template x-for="option in assetStatusOptions" :key="option">
+                      <option :value="option" x-text="option.charAt(0).toUpperCase() + option.slice(1)"></option>
+                    </template>
+                  </select>
+                  <input x-show="!field.textarea && !field.select" :value="assetFieldValue(field)" :type="field.type || 'text'" :required="field.required" :placeholder="field.placeholder || ''" :list="field.list" @input="onAssetFieldInput(field, $event)" @change="onAssetFieldChange(field)"
+                         class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                  <span x-show="field.key === 'asset_tag'" class="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span x-show="tagStatus === 'available'" class="rounded-full bg-emerald-400/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">Available</span>
+                    <span x-show="tagStatus === 'taken'" class="rounded-full bg-rose-400/10 px-2 py-0.5 text-[11px] font-medium text-rose-300">Already in use</span>
+                    <span x-show="tagStatus === 'invalid'" class="rounded-full bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">Use PREFIX-0001 format</span>
+                    <button type="button" @click="regenerateTag()" class="rounded-lg bg-cyan-400/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 hover:bg-cyan-400/20">Regenerate Tag</button>
+                  </span>
+                </label>
               </template>
-            </select>
-            <input x-show="!field.textarea && !field.select" :value="assetFieldValue(field)" :type="field.type || 'text'" :required="field.required" :placeholder="field.placeholder || ''" :disabled="assetUnknown[field.key]" :list="field.list" @input="onAssetFieldInput(field, $event)" @change="onAssetFieldChange(field)"
-                   class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50 disabled:opacity-40">
-            <div x-show="field.key === 'asset_tag'" class="mt-1.5 flex flex-wrap items-center gap-2">
-              <span x-show="tagStatus === 'available'" class="rounded-full bg-emerald-400/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">Available</span>
-              <span x-show="tagStatus === 'taken'" class="rounded-full bg-rose-400/10 px-2 py-0.5 text-[11px] font-medium text-rose-300">Already in use</span>
-              <span x-show="tagStatus === 'invalid'" class="rounded-full bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">Use PREFIX-0001 format</span>
-              <button type="button" @click="regenerateTag()" class="rounded-lg bg-cyan-400/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 transition hover:bg-cyan-400/20">Regenerate Tag</button>
             </div>
-          </div>
+          </section>
         </template>
+        <div x-show="!visibleAssetGroups.length" class="empty-state rounded-2xl px-6 py-12 text-center">
+          <p class="font-medium text-slate-300">No fields available</p>
+          <p class="mt-2 text-sm text-slate-600">Choose an asset type or enable manual mode to continue.</p>
+        </div>
         <datalist id="asset-type-options">
           <template x-for="option in typeOptions" :key="option"><option :value="option"></option></template>
         </datalist>
         <datalist id="asset-category-options">
           <template x-for="option in categoryOptions" :key="option"><option :value="option"></option></template>
         </datalist>
+        <label>
+          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Assigned To</span>
+          <select x-model="assignedPersonId" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+            <option :value="null">— Unassigned —</option>
+            <template x-for="person in people" :key="person.id">
+              <option :value="person.id" x-text="person.full_name"></option>
+            </template>
+          </select>
+        </label>
         <label class="sm:col-span-2">
           <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">Invoice File</span>
           <input @change="invoiceFile = $event.target.files[0] || null" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
@@ -666,11 +707,10 @@
           <div class="mb-3 flex flex-wrap items-center gap-2">
             <span class="text-xs font-medium text-slate-400">Extracted candidates from <span x-text="extractProviders.length"></span> file(s)</span>
           </div>
-          <div x-show="extractCandidates.length === 0" class="text-sm text-amber-300">No recognizable fields found in any report.</div>
           <div class="space-y-2">
-            <template x-for="candidate in extractCandidates" :key="candidate.key + '_' + candidate.sourceFile">
+            <template x-for="candidate in extractCandidates" :key="candidate.key + '_' + candidate.sourceKey">
               <label class="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-                <input type="checkbox" x-model="extractSelection[candidate.key + '_' + candidate.sourceFile]" class="mt-1 h-4 w-4 accent-cyan-500">
+                <input type="checkbox" x-model="extractSelection[candidate.key + '_' + candidate.sourceKey]" class="mt-1 h-4 w-4 accent-cyan-500">
                 <span class="min-w-0 flex-1">
                   <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span class="text-sm font-medium text-white" x-text="candidate.label"></span>
@@ -690,6 +730,16 @@
           </div>
         </div>
       </template>
+      <div x-show="extractErrors.length" class="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wider text-amber-300">Files needing attention</p>
+        <template x-for="error in extractErrors" :key="error.filename">
+          <p class="mt-2 text-xs text-slate-400"><span class="font-medium text-slate-200" x-text="error.filename"></span>: <span x-text="error.message"></span></p>
+        </template>
+      </div>
+      <div x-show="extractionAttempted && !extractBusy && !extractCandidates.length && !extractErrors.length" class="empty-state mt-5 rounded-xl px-5 py-10 text-center">
+        <p class="font-medium text-slate-300">No recognizable fields found</p>
+        <p class="mt-2 text-sm text-slate-600">Confirm the report contains DxDiag, systeminfo, or Linux hardware output.</p>
+      </div>
 
       <div class="mt-6 flex justify-end gap-3 border-t border-slate-800 pt-5">
         <button type="button" @click="extractModal = false" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800">Cancel</button>
@@ -867,13 +917,14 @@ invoiceFile: null,
         manualMode: false,
         exportHistory: [], exportHistoryLoading: false, exportHistoryError: false,
         newAsset: { asset_tag: "", type: "", asset_name: "", category: "", internal_inventory_number: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", gpu_name: "", os_name: "", os_version: "", bios_version: "", serial_number: "", hostname: "", ip_address: "", location: "", building: "", room: "", desk: "", rack: "", rack_unit: "", org_unit: "", status: "", vendor_name: "", currency: "", invoice_number: "", purchase_date: "", purchase_price: "", warranty_expiration_date: "", support_expiration_date: "", invoice_path: "", notes: "", specifications: {} },
+        assignedPersonId: null,
         assetTagManual: false,
         tagStatus: "",
         assetNameManual: false,
         categoryManual: false,
         extractedFields: {},
         assetUnknown: { purchase_date: false, purchase_price: false, status: false, warranty_expiration_date: false, support_expiration_date: false },
-        extractModal: false, extractText: "", extractFiles: [], extractResult: null, extractCandidates: [], extractSelection: {}, extractProviders: [], extractBusy: false,
+        extractModal: false, extractText: "", extractFiles: [], extractCandidates: [], extractSelection: {}, extractProviders: [], extractErrors: [], extractionAttempted: false, extractBusy: false,
         newPerson: { full_name: "", org_unit: "", job_role: "", email: "", phone: "", status: "active", notes: "" },
 navigation: [
           { id: "dashboard", label: "Dashboard", labelKey: "nav.dashboard", icon: icon('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>') },
@@ -891,7 +942,7 @@ navigation: [
           { key: "gpu_name", label: "Graphics" }, { key: "bios_version", label: "BIOS" }
         ],
         assetFields: [
-          { key: "type", label: "Type", required: true, placeholder: "Laptop", list: "asset-type-options" },
+          { key: "type", label: "Type", placeholder: "Laptop", list: "asset-type-options" },
           { key: "asset_tag", label: "Asset Tag", placeholder: "Auto-generated" },
           { key: "asset_name", label: "Asset Name", placeholder: "e.g. Jane's Latitude 7450", wide: true },
           { key: "category", label: "Category", placeholder: "e.g. Laptop", list: "asset-category-options" },
@@ -984,6 +1035,20 @@ navigation: [
           const present = this.assets.map(asset => asset.category).filter(Boolean);
           return [...new Set([...Object.values(assetCategoryByType), ...present])];
         },
+        get visibleAssetGroups() {
+          const groups = [];
+          let current = { name: "Identity & Classification", fields: [], specialized: false };
+          for (const field of this.assetFields) {
+            if (field.section) {
+              if (current.fields.length) groups.push(current);
+              current = { name: field.section, fields: [], specialized: Boolean(field.assetTypes || field.excludeAssetTypes) };
+            }
+            current.specialized ||= Boolean(field.assetTypes || field.excludeAssetTypes);
+            if (this.fieldAssetShown(field)) current.fields.push(field);
+          }
+          if (current.fields.length) groups.push(current);
+          return groups;
+        },
         get currentCustodian() {
           const asset = this.assets.find(item => item.id === this.editingAssetId);
           return asset?.custodian || null;
@@ -1011,11 +1076,14 @@ navigation: [
           ];
         },
         get warningGroups() {
-          const w = this.summary.warnings;
+          const w = this.summary?.warnings || {};
+          const expiring = Array.isArray(w.expiring_warranties) ? w.expiring_warranties : [];
+          const missing = Array.isArray(w.missing_serial) ? w.missing_serial : [];
+          const unassigned = Array.isArray(w.unassigned_assets) ? w.unassigned_assets : [];
           return [
-            { key: "warranty", title: "Warranties expiring soon", detail: w.expiring_warranties[0]?.asset_tag ? `${w.expiring_warranties[0].asset_tag} expires first` : "No coverage expires in 30 days", count: w.expiring_warranties.length, color: "bg-amber-400/10 text-amber-300", icon: icon('<path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/><path d="M12 8v4m0 4h.01"/>') },
-            { key: "serial", title: "Assets missing serials", detail: w.missing_serial[0]?.asset_tag ? `${w.missing_serial[0].asset_tag} needs identification` : "Asset identity is complete", count: w.missing_serial.length, color: "bg-rose-400/10 text-rose-300", icon: icon('<path d="M5 5h14v14H5zM8 9h8M8 13h5"/>') },
-            { key: "assignment", title: "Unassigned assets", detail: w.unassigned_assets[0]?.asset_tag ? `${w.unassigned_assets[0].asset_tag} is available` : "Every asset has an owner", count: w.unassigned_assets.length, color: "bg-cyan-400/10 text-cyan-300", icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') }
+            { key: "warranty", title: "Warranties expiring soon", detail: expiring[0]?.asset_tag ? `${expiring[0].asset_tag} expires first` : "No coverage expires in 30 days", count: expiring.length, color: "bg-amber-400/10 text-amber-300", icon: icon('<path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/><path d="M12 8v4m0 4h.01"/>') },
+            { key: "serial", title: "Assets missing serials", detail: missing[0]?.asset_tag ? `${missing[0].asset_tag} needs identification` : "Asset identity is complete", count: missing.length, color: "bg-rose-400/10 text-rose-300", icon: icon('<path d="M5 5h14v14H5zM8 9h8M8 13h5"/>') },
+            { key: "assignment", title: "Unassigned assets", detail: unassigned[0]?.asset_tag ? `${unassigned[0].asset_tag} is available` : "Every asset has an owner", count: unassigned.length, color: "bg-cyan-400/10 text-cyan-300", icon: icon('<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>') }
           ];
         },
         navigate(page) {
@@ -1124,31 +1192,60 @@ navigation: [
           this.assetModal = true;
         },
         editAsset(asset) {
-          this.editingAssetId = asset.id;
+          const selected = this.resolveAsset(asset);
+          if (!selected) {
+            this.toast("Unable to identify the selected asset. Refresh and try again.", "error");
+            return;
+          }
+          const draft = this.deepClone(selected);
           this.invoiceFile = null;
           this.resetAssetForm();
+          this.editingAssetId = this.normalizeAssetId(draft.id);
+          this.manualMode = true;
           this.newAsset = {
-            asset_tag: asset.asset_tag || "", type: asset.type || "", asset_name: asset.asset_name || "", category: asset.category || "",
-            internal_inventory_number: asset.internal_inventory_number || "", manufacturer: asset.manufacturer || "", brand: asset.brand || "",
-            model: asset.model || "", ram_mb: asset.ram_mb != null ? String(asset.ram_mb) : "", cpu_name: asset.cpu_name || "",
-            gpu_name: asset.gpu_name || "", os_name: asset.os_name || "", os_version: asset.os_version || "", bios_version: asset.bios_version || "",
-            serial_number: asset.serial_number || "", hostname: asset.hostname || "", ip_address: asset.ip_address || "",
-            location: asset.location || "", building: asset.building || "", room: asset.room || "", desk: asset.desk || "",
-            rack: asset.rack || "", rack_unit: asset.rack_unit || "", org_unit: asset.org_unit || "", status: asset.status || "",
-            vendor_name: asset.vendor_name || "", currency: asset.currency || "", invoice_number: asset.invoice_number || "",
-            purchase_date: this.toJalali(asset.purchase_date), purchase_price: asset.purchase_price != null ? String(asset.purchase_price) : "",
-            warranty_expiration_date: this.toJalali(asset.warranty_expiration_date), support_expiration_date: this.toJalali(asset.support_expiration_date),
-            invoice_path: asset.invoice_path || "", notes: asset.notes || "",
-            specifications: asset.specifications && typeof asset.specifications === "object" ? { ...asset.specifications } : {}
+            asset_tag: draft.asset_tag || "", type: draft.type || "", asset_name: draft.asset_name || "", category: draft.category || "",
+            internal_inventory_number: draft.internal_inventory_number || "", manufacturer: draft.manufacturer || "", brand: draft.brand || "",
+            model: draft.model || "", ram_mb: draft.ram_mb != null ? String(draft.ram_mb) : "", cpu_name: draft.cpu_name || "",
+            gpu_name: draft.gpu_name || "", os_name: draft.os_name || "", os_version: draft.os_version || "", bios_version: draft.bios_version || "",
+            serial_number: draft.serial_number || "", hostname: draft.hostname || "", ip_address: draft.ip_address || "",
+            location: draft.location || "", building: draft.building || "", room: draft.room || "", desk: draft.desk || "",
+            rack: draft.rack || "", rack_unit: draft.rack_unit || "", org_unit: draft.org_unit || "", status: draft.status || "",
+            vendor_name: draft.vendor_name || "", currency: draft.currency || "", invoice_number: draft.invoice_number || "",
+            purchase_date: this.toJalali(draft.purchase_date), purchase_price: draft.purchase_price != null ? String(draft.purchase_price) : "",
+            warranty_expiration_date: this.toJalali(draft.warranty_expiration_date), support_expiration_date: this.toJalali(draft.support_expiration_date),
+            invoice_path: draft.invoice_path || "", notes: draft.notes || "",
+            specifications: draft.specifications && typeof draft.specifications === "object" ? this.deepClone(draft.specifications) : {}
           };
+          this.assignedPersonId = draft.custodian ? draft.custodian.id : null;
           this.assetUnknown = {
-            purchase_date: asset.purchase_date == null,
-            purchase_price: asset.purchase_price == null,
-            status: !(asset.status || "").trim(),
-            warranty_expiration_date: asset.warranty_expiration_date == null,
-            support_expiration_date: asset.support_expiration_date == null,
+            purchase_date: draft.purchase_date == null,
+            purchase_price: draft.purchase_price == null,
+            status: !(draft.status || "").trim(),
+            warranty_expiration_date: draft.warranty_expiration_date == null,
+            support_expiration_date: draft.support_expiration_date == null,
           };
           this.assetModal = true;
+        },
+        normalizeAssetId(value) {
+          if (value === null || value === undefined) return null;
+          const normalized = String(value).trim();
+          if (!normalized || ["null", "missing", "undefined", "nan"].includes(normalized.toLowerCase())) return null;
+          const numeric = Number(normalized);
+          return Number.isSafeInteger(numeric) && numeric > 0 ? numeric : null;
+        },
+        resolveAsset(asset) {
+          if (!asset || typeof asset !== "object") return null;
+          const normalizedId = this.normalizeAssetId(asset.id);
+          if (normalizedId !== null) {
+            return this.assets.find(item => this.normalizeAssetId(item.id) === normalizedId) || asset;
+          }
+          const tag = String(asset.asset_tag || "").trim().toUpperCase();
+          if (!tag || ["NULL", "MISSING", "UNDEFINED"].includes(tag)) return null;
+          return this.assets.find(item => String(item.asset_tag || "").trim().toUpperCase() === tag) || null;
+        },
+        deepClone(value) {
+          if (typeof structuredClone === "function") return structuredClone(value);
+          return JSON.parse(JSON.stringify(value));
         },
         isValidAssetTag(tag) { return /^[A-Z][A-Z0-9]{1,9}-\d{4,}$/.test(tag); },
         assetFieldValue(field) {
@@ -1190,16 +1287,31 @@ navigation: [
         },
         typeInList(type, list) {
           if (!type) return false;
-          return list.some(item => type === item || type.includes(item) || item.includes(type));
+          const normalized = type.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+          return list.some(item => normalized === item.toLowerCase());
         },
         fieldAssetShown(field) {
+          if (this.manualMode) return true;
           if (!field.assetTypes && !field.excludeAssetTypes) return true;
           const type = (this.newAsset.type || "").trim().toLowerCase();
+          if (!type) return false;
           if (field.assetTypes) return this.typeInList(type, field.assetTypes);
           return !this.typeInList(type, field.excludeAssetTypes);
         },
         sectionVisible(section) {
-          return this.assetFields.some(field => field.section === section && this.fieldAssetShown(field));
+          return this.visibleAssetGroups.some(group => group.name === section && group.fields.length > 0);
+        },
+        sectionDescription(section) {
+          return ({
+            "Identity & Classification": "Core identification, lifecycle status, and human-readable inventory context.",
+            "Specifications": "Hardware and operating-system details relevant to the selected asset type.",
+            "Monitor": "Display-specific panel, size, resolution, and refresh characteristics.",
+            "Printer": "Printing capabilities and consumable information.",
+            "Network": "Network role, port, management, and interface details.",
+            "Mobile": "Mobile-device capacity and hardware identity.",
+            "Procurement & Lifecycle": "Commercial record, invoice, warranty, and support milestones.",
+            "Location & Assignment": "Physical placement and organizational ownership context.",
+          })[section] || "Operational details for this asset record.";
         },
         suggestAssetName() {
           if (this.assetNameManual || this.extractedFields.asset_name) return;
@@ -1258,12 +1370,14 @@ navigation: [
           this.extractedFields = {};
           this.extractText = "";
           this.extractFiles = [];
-          this.extractResult = null;
           this.extractCandidates = [];
           this.extractSelection = {};
           this.extractProviders = [];
+          this.extractErrors = [];
+          this.extractionAttempted = false;
           this.assetUnknown = { purchase_date: false, purchase_price: false, status: false, warranty_expiration_date: false, support_expiration_date: false };
           this.newAsset = { asset_tag: "", type: "", asset_name: "", category: "", internal_inventory_number: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", gpu_name: "", os_name: "", os_version: "", bios_version: "", serial_number: "", hostname: "", ip_address: "", location: "", building: "", room: "", desk: "", rack: "", rack_unit: "", org_unit: "", status: "", vendor_name: "", currency: "", invoice_number: "", purchase_date: "", purchase_price: "", warranty_expiration_date: "", support_expiration_date: "", invoice_path: "", notes: "", specifications: {} };
+          this.assignedPersonId = null;
         },
         enterManualMode() {
           this.manualMode = true;
@@ -1272,10 +1386,11 @@ navigation: [
         openExtractModal() {
           this.extractText = "";
           this.extractFiles = [];
-          this.extractResult = null;
           this.extractCandidates = [];
           this.extractSelection = {};
           this.extractProviders = [];
+          this.extractErrors = [];
+          this.extractionAttempted = false;
           this.extractModal = true;
         },
         extractFilesChanged(event) { this.extractFiles = Array.from(event.target.files || []); },
@@ -1288,36 +1403,34 @@ navigation: [
           this.extractCandidates = [];
           this.extractSelection = {};
           this.extractProviders = [];
+          this.extractErrors = [];
+          this.extractionAttempted = true;
           try {
-            const filesToProcess = [...this.extractFiles];
-            if ((this.extractText || "").trim()) {
-              filesToProcess.push({ name: "pasted.txt", text: this.extractText });
+            const body = new FormData();
+            for (const file of this.extractFiles) body.append("files", file);
+            if ((this.extractText || "").trim()) body.append("text", this.extractText);
+            const result = await this.api("/api/v1/spec-extract", { method: "POST", body });
+            const providersByFile = new Map(
+              (result?.sources || []).map(source => [source.filename, source.provider])
+            );
+            this.extractProviders = result?.sources || [];
+            this.extractErrors = [...(result?.warnings || []), ...(result?.errors || [])];
+            for (const [index, candidate] of (result?.candidates || []).entries()) {
+              const filename = candidate.source_file || "pasted.txt";
+              const sourceKey = `${index}:${filename}`;
+              const provider = providersByFile.get(filename) || result.provider;
+              this.extractCandidates.push({
+                ...candidate,
+                sourceFile: filename,
+                sourceKey,
+                provider: provider?.name || candidate.source,
+              });
+              this.extractSelection[`${candidate.key}_${sourceKey}`] = true;
             }
-            for (const file of filesToProcess) {
-              const body = new FormData();
-              let filename = file.name || "report.txt";
-              if (file.text) {
-                body.append("text", file.text);
-              } else {
-                body.append("file", file);
-              }
-              const result = await this.api("/api/v1/spec-extract", { method: "POST", body });
-              if (result?.candidates?.length) {
-                const providerInfo = {
-                  id: result.provider.id,
-                  name: result.provider.name,
-                  sourceType: result.provider.sourceType,
-                };
-                this.extractProviders.push(providerInfo);
-                for (const candidate of result.candidates) {
-                  this.extractCandidates.push({
-                    ...candidate,
-                    sourceFile: filename,
-                    provider: providerInfo.name,
-                  });
-                  this.extractSelection[candidate.key + '_' + filename] = true;
-                }
-              }
+            if (!this.extractCandidates.length && this.extractErrors.length) {
+              this.toast("No report could be parsed. Review the file errors and try again.", "error");
+            } else if (this.extractErrors.length) {
+              this.toast(`Parsed ${this.extractProviders.length} report(s); ${this.extractErrors.length} file(s) need attention.`, "error");
             }
           } catch (error) { this.toast(error.message, "error"); }
           finally { this.extractBusy = false; }
@@ -1325,9 +1438,18 @@ navigation: [
         applyExtraction() {
           let applied = 0;
           const skipped = [];
+          const confidenceRank = { high: 3, medium: 2, low: 1 };
+          const winners = new Map();
           for (const candidate of this.extractCandidates) {
-            const selectionKey = candidate.key + '_' + candidate.sourceFile;
+            const selectionKey = `${candidate.key}_${candidate.sourceKey}`;
             if (!this.extractSelection[selectionKey]) continue;
+            const fieldKey = `${candidate.target}:${candidate.key}`;
+            const current = winners.get(fieldKey);
+            if (!current || confidenceRank[candidate.confidence] > confidenceRank[current.confidence]) {
+              winners.set(fieldKey, candidate);
+            }
+          }
+          for (const candidate of winners.values()) {
             const existing = candidate.target === "spec"
               ? (this.newAsset.specifications || {})[candidate.key]
               : this.newAsset[candidate.key];
@@ -1343,10 +1465,11 @@ navigation: [
             applied += 1;
           }
           this.extractModal = false;
-          this.extractResult = null;
           this.extractCandidates = [];
           this.extractFiles = [];
           this.extractText = "";
+          this.extractErrors = [];
+          this.extractionAttempted = false;
           this.manualMode = true;
           this.suggestAssetName();
           this.suggestCategory();
@@ -1420,6 +1543,21 @@ navigation: [
             const path = editing ? `/api/v1/assets/${this.editingAssetId}` : "/api/v1/assets";
             const savedAsset = await this.api(path, { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
             if (this.invoiceFile) await this.uploadInvoice(savedAsset.id, this.invoiceFile);
+            // Handle Assigned To: create or clear assignment as needed
+            try {
+              const currentCustodianId = this.currentCustodian ? this.currentCustodian.id : null;
+              const desired = this.assignedPersonId || null;
+              if (desired !== currentCustodianId) {
+                if (desired) {
+                  const assignPayload = { asset_id: savedAsset.id, person_id: desired, start_date: new Date().toISOString().slice(0,10) };
+                  await this.api(`/api/v1/assets/${savedAsset.id}/assign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(assignPayload) });
+                } else if (currentCustodianId) {
+                  await this.api(`/api/v1/assets/${savedAsset.id}/unassign`, { method: "POST" });
+                }
+              }
+            } catch (err) {
+              this.toast(`Assignment update failed: ${err.message}`, "error");
+            }
             this.assetModal = false; this.invoiceFile = null; this.editingAssetId = null;
             this.resetAssetForm();
             await Promise.all([this.loadAssets(), this.loadSummary()]);

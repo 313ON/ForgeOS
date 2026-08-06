@@ -18,8 +18,8 @@ class Asset(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    asset_tag: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    type: Mapped[str] = mapped_column(String(100), nullable=False)
+    asset_tag: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
+    type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     asset_name: Mapped[str | None] = mapped_column(String(255))
     category: Mapped[str | None] = mapped_column(String(100))
     internal_inventory_number: Mapped[str | None] = mapped_column(String(100))

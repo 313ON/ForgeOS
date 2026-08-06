@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.services.extraction import extract_fields
+from app.services.extraction import extract_fields, extract_reports
 
 DXDIGAG_SAMPLE = """
 ------------------
@@ -102,6 +102,67 @@ class ExtractionProviderTests(unittest.TestCase):
 
     def test_unknown_report_returns_none(self) -> None:
         self.assertIsNone(extract_fields("hello world", "notes.txt"))
+
+    def test_collector_primary_report(self) -> None:
+        report = """
+Host Name: COLLECTOR-PC
+OS Name: Microsoft Windows 11 Pro
+OS Version: 10.0.26100 Build 26100
+System Manufacturer: Dell Inc.
+System Model: Latitude 7450
+System Serial Number: SERIAL-7
+Processor Name: Intel(R) Core(TM) Ultra 7
+Number of Cores: 16
+Number of Logical Processors: 22
+Total Physical Memory: 32768 MB
+BIOS Version: 1.8.0
+GPU Name: Intel(R) Graphics
+IP Address: 192.0.2.55
+"""
+        result = extract_fields(report, "forgeos_system_report.txt")
+
+        assert result is not None
+        self.assertEqual(result.provider.id, "forgeos_collector")
+        self.assertEqual(result.parsed_fields["hostname"], "COLLECTOR-PC")
+        self.assertEqual(result.parsed_fields["logical_cpu_cores"], 22)
+
+    def test_mixed_batch_keeps_valid_reports_and_warns_per_file(self) -> None:
+        ipconfig = """
+Windows IP Configuration
+Ethernet adapter Ethernet:
+   IPv4 Address. . . . . . . . . . . : 192.0.2.77
+   Default Gateway . . . . . . . . . : 192.0.2.1
+"""
+        storage = """
+Model        : NVMe Drive
+SerialNumber : STORAGE-1
+MediaType    : Fixed hard disk media
+Size         : 1000204886016
+"""
+        result = extract_reports(
+            [
+                ("SYSTEMINFO.TXT", SYSTEMINFO_SAMPLE),
+                ("ipconfig.txt", ipconfig),
+                ("storage.log", storage),
+                ("readme.txt", "not a hardware report"),
+            ]
+        )
+
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.sources), 3)
+        self.assertEqual(result.parsed_fields["hostname"], "OFFICE-1")
+        self.assertEqual(result.parsed_fields["ip_address"], "192.0.2.10")
+        self.assertTrue(any(issue.filename == "readme.txt" for issue in result.warnings))
+        self.assertTrue(any(issue.filename == "storage.log" for issue in result.warnings))
+        self.assertFalse(result.errors)
+
+    def test_unsupported_batch_returns_structured_failure(self) -> None:
+        result = extract_reports([("notes.log", "hello world")])
+
+        self.assertFalse(result.success)
+        self.assertFalse(result.sources)
+        self.assertTrue(result.warnings)
+        self.assertTrue(result.errors)
 
     def test_multiple_reports_can_be_combined(self) -> None:
         """Verify that independent report parsing produces candidates with source info."""
