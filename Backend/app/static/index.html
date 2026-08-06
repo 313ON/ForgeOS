@@ -74,13 +74,6 @@
         </template>
       </nav>
 
-      <div class="space-y-2 px-4">
-        <p class="px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">Reports</p>
-        <button @click="navigate('reports')" class="sidebar-item w-full rounded-xl py-3 text-sm font-medium text-slate-400 transition hover:bg-emerald-400/10 hover:text-emerald-300">
-          <span class="text-emerald-300">▦</span><span data-i18n="nav.reports">Reports</span>
-        </button>
-      </div>
-
       <div class="m-4 rounded-2xl border border-emerald-400/10 bg-emerald-400/5 p-4">
         <div class="flex items-center gap-2 text-xs font-semibold text-emerald-300">
           <span class="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981]"></span>
@@ -272,8 +265,8 @@
                       </td>
                       <td class="px-5 py-4">
                         <div x-show="isAdmin" class="flex items-center gap-2">
-                          <button @click="editAsset(asset)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-400/20">Edit</button>
-                          <button @click="deleteAsset(asset)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-400/20">Remove</button>
+                          <button type="button" @click="editAsset(asset)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-400/20">Edit</button>
+                          <button type="button" @click="deleteAsset(asset)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-400/20">Remove</button>
                         </div>
                       </td>
                     </tr>
@@ -499,7 +492,7 @@
                       <span x-text="profileLabel(importResult?.suggested_profile)"></span>
                     </div>
                   </div>
-                  <div class="text-left sm:text-right"><p class="text-xs text-slate-500">Source</p><p class="mt-1 font-mono text-sm text-cyan-300" x-text="importResult?.source"></p></div>
+                  <div class="text-left sm:text-right"><p class="text-xs text-slate-500">Source</p><p class="mt-1 font-mono text-sm text-cyan-300" x-text="importResult?.provider?.name || importResult?.sources?.[0]?.format || 'Unknown'"></p></div>
                 </div>
                 <div class="mt-5 grid gap-3 sm:grid-cols-2">
                   <template x-for="field in parsedFields" :key="field.key">
@@ -571,11 +564,11 @@
       <div class="flex items-start justify-between gap-3">
         <div><p class="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">Asset Registry</p><h3 id="asset-modal-title" class="mt-1 text-xl font-semibold text-white" x-text="editingAssetId ? 'Edit Asset' : translated('modal.new_asset', 'Register New Asset')"></h3><p class="mt-1 text-sm text-slate-400" x-text="editingAssetId ? 'Update the operational record. Existing values remain isolated until you save.' : translated('modal.new_asset_help', 'Add a device to the operational inventory.')"></p></div>
         <div class="flex shrink-0 items-center gap-2">
-          <button @click="openExtractModal()" class="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-3 py-2 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20" title="Extract from report files">
+          <button type="button" @click="openExtractModal()" class="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-3 py-2 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20" title="Extract from report files">
             <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
             Extract
           </button>
-          <button @click="enterManualMode()" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs font-medium text-emerald-300 transition hover:bg-emerald-400/20" title="Show all fields for manual entry">
+          <button type="button" @click="enterManualMode()" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs font-medium text-emerald-300 transition hover:bg-emerald-400/20" title="Show all fields for manual entry">
             <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
             Manual
           </button>
@@ -602,7 +595,7 @@
                       <span class="text-[11px] text-slate-500">Unknown</span>
                     </span>
                   </span>
-                  <textarea x-show="field.textarea" :value="assetFieldValue(field)" rows="3" :required="field.required" @input="onAssetFieldInput(field, $event)" @change="onAssetFieldChange(field)"
+                  <textarea x-show="field.textarea" :value="assetFieldValue(field)" rows="3" @input="onAssetFieldInput(field, $event)" @change="onAssetFieldChange(field)"
                             class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10"></textarea>
                   <select x-show="field.select" :value="assetFieldValue(field)" @change="onAssetFieldSelect(field, $event)"
                           class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
@@ -611,7 +604,7 @@
                       <option :value="option" x-text="option.charAt(0).toUpperCase() + option.slice(1)"></option>
                     </template>
                   </select>
-                  <input x-show="!field.textarea && !field.select" :value="assetFieldValue(field)" :type="field.type || 'text'" :required="field.required" :placeholder="field.placeholder || ''" :list="field.list" @input="onAssetFieldInput(field, $event)" @change="onAssetFieldChange(field)"
+                  <input x-show="!field.textarea && !field.select" :value="assetFieldValue(field)" :type="field.type || 'text'" :placeholder="field.placeholder || ''" :list="field.list" @input="onAssetFieldInput(field, $event)" @change="onAssetFieldChange(field)"
                          class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
                   <span x-show="field.key === 'asset_tag'" class="mt-1.5 flex flex-wrap items-center gap-2">
                     <span x-show="tagStatus === 'available'" class="rounded-full bg-emerald-400/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">Available</span>
@@ -936,10 +929,12 @@ navigation: [
           { id: "reports", label: "Reports", labelKey: "nav.reports", icon: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>') }
         ],
         parsedFields: [
-          { key: "hostname", label: "Hostname" }, { key: "os_name", label: "Operating System" },
-          { key: "os_version", label: "OS Version" }, { key: "cpu_name", label: "Processor" },
-          { key: "logical_cpu_cores", label: "Logical Cores" }, { key: "ram_mb", label: "Memory" },
-          { key: "gpu_name", label: "Graphics" }, { key: "bios_version", label: "BIOS" }
+          { key: "hostname", label: "Hostname" }, { key: "manufacturer", label: "Manufacturer" },
+          { key: "model", label: "Model" }, { key: "serial_number", label: "Serial Number" },
+          { key: "cpu_name", label: "Processor" }, { key: "ram_mb", label: "Memory" },
+          { key: "gpu_name", label: "Graphics" }, { key: "os_name", label: "Operating System" },
+          { key: "os_version", label: "OS Version" }, { key: "bios_version", label: "BIOS" },
+          { key: "storage_type", label: "Storage Type" }, { key: "storage_capacity", label: "Storage Capacity" }
         ],
         assetFields: [
           { key: "type", label: "Type", placeholder: "Laptop", list: "asset-type-options" },
@@ -1244,7 +1239,13 @@ navigation: [
           return this.assets.find(item => String(item.asset_tag || "").trim().toUpperCase() === tag) || null;
         },
         deepClone(value) {
-          if (typeof structuredClone === "function") return structuredClone(value);
+          if (typeof structuredClone === "function") {
+            try {
+              return structuredClone(value);
+            } catch (_error) {
+              // Some reactive proxies or browser objects cannot be structured-cloned.
+            }
+          }
           return JSON.parse(JSON.stringify(value));
         },
         isValidAssetTag(tag) { return /^[A-Z][A-Z0-9]{1,9}-\d{4,}$/.test(tag); },
@@ -1378,6 +1379,28 @@ navigation: [
           this.assetUnknown = { purchase_date: false, purchase_price: false, status: false, warranty_expiration_date: false, support_expiration_date: false };
           this.newAsset = { asset_tag: "", type: "", asset_name: "", category: "", internal_inventory_number: "", manufacturer: "", brand: "", model: "", ram_mb: "", cpu_name: "", gpu_name: "", os_name: "", os_version: "", bios_version: "", serial_number: "", hostname: "", ip_address: "", location: "", building: "", room: "", desk: "", rack: "", rack_unit: "", org_unit: "", status: "", vendor_name: "", currency: "", invoice_number: "", purchase_date: "", purchase_price: "", warranty_expiration_date: "", support_expiration_date: "", invoice_path: "", notes: "", specifications: {} };
           this.assignedPersonId = null;
+        },
+        populateAssetDraft(parsed) {
+          this.resetAssetForm();
+          this.newAsset = {
+            ...this.newAsset,
+            manufacturer: parsed.manufacturer || "",
+            model: parsed.model || "",
+            serial_number: parsed.serial_number || "",
+            hostname: parsed.hostname || "",
+            cpu_name: parsed.cpu_name || "",
+            ram_mb: parsed.ram_mb != null ? String(parsed.ram_mb) : "",
+            gpu_name: parsed.gpu_name || "",
+            os_name: parsed.os_name || "",
+            os_version: parsed.os_version || "",
+            bios_version: parsed.bios_version || "",
+            specifications: {
+              storage_type: parsed.storage_type || null,
+              storage_capacity: parsed.storage_capacity || null,
+            },
+          };
+          this.manualMode = true;
+          this.assetModal = true;
         },
         enterManualMode() {
           this.manualMode = true;
@@ -1514,12 +1537,9 @@ navigation: [
               return;
             }
             if (editing) {
-              if (assetTag) payload.asset_tag = assetTag;
-              else delete payload.asset_tag;
+              payload.asset_tag = assetTag || null;
             } else if (assetTag) {
               payload.asset_tag = assetTag;
-            } else {
-              delete payload.asset_tag;
             }
 
             for (const key of ["purchase_date", "warranty_expiration_date", "support_expiration_date"]) {
@@ -1541,22 +1561,21 @@ navigation: [
 
             if (editing) delete payload.invoice_path;
             const path = editing ? `/api/v1/assets/${this.editingAssetId}` : "/api/v1/assets";
+            console.debug("saveAsset payload", payload, "editing", editing, "assignedPersonId", this.assignedPersonId);
             const savedAsset = await this.api(path, { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
             if (this.invoiceFile) await this.uploadInvoice(savedAsset.id, this.invoiceFile);
+            await this.loadAssets();
             // Handle Assigned To: create or clear assignment as needed
-            try {
-              const currentCustodianId = this.currentCustodian ? this.currentCustodian.id : null;
-              const desired = this.assignedPersonId || null;
-              if (desired !== currentCustodianId) {
-                if (desired) {
-                  const assignPayload = { asset_id: savedAsset.id, person_id: desired, start_date: new Date().toISOString().slice(0,10) };
-                  await this.api(`/api/v1/assets/${savedAsset.id}/assign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(assignPayload) });
-                } else if (currentCustodianId) {
-                  await this.api(`/api/v1/assets/${savedAsset.id}/unassign`, { method: "POST" });
-                }
+            const currentCustodianId = this.currentCustodian ? this.currentCustodian.id : null;
+            const desired = this.assignedPersonId || null;
+            if (desired !== currentCustodianId) {
+              if (desired) {
+                const assignPayload = { asset_id: savedAsset.id, person_id: desired, start_date: new Date().toISOString().slice(0,10) };
+                console.debug("assignment payload", assignPayload);
+                await this.api(`/api/v1/assets/${savedAsset.id}/assign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(assignPayload) });
+              } else if (currentCustodianId) {
+                await this.api(`/api/v1/assets/${savedAsset.id}/unassign`, { method: "POST" });
               }
-            } catch (err) {
-              this.toast(`Assignment update failed: ${err.message}`, "error");
             }
             this.assetModal = false; this.invoiceFile = null; this.editingAssetId = null;
             this.resetAssetForm();
@@ -1643,12 +1662,23 @@ navigation: [
           const timer = setInterval(() => { if (this.uploadProgress < 88) this.uploadProgress += Math.ceil((90 - this.uploadProgress) / 5); }, 250);
           try {
             const body = new FormData(); body.append("file", this.selectedFile);
-            this.importResult = await this.api("/api/v1/ingest", { method: "POST", body });
-            this.uploadProgress = 100; await this.loadSummary(); this.toast("Report imported and analyzed");
-          } catch (error) { this.toast(error.message, "error"); } finally { clearInterval(timer); setTimeout(() => { this.uploading = false; this.uploadProgress = 0; }, 500); }
+            const result = await this.api("/api/v1/spec-extract", { method: "POST", body });
+            console.debug("spec-extract result", result);
+            this.importResult = result;
+            this.uploadProgress = 100;
+            this.populateAssetDraft(result.parsed_fields || {});
+            this.toast("Report parsed and asset form prefilled");
+          } catch (error) { console.error("uploadReport error", error); this.toast(error.message, "error"); } finally { clearInterval(timer); setTimeout(() => { this.uploading = false; this.uploadProgress = 0; }, 500); }
         },
-        displayParsed(key) { const value = this.importResult?.parsed?.[key]; if (value === null || value === undefined || value === "") return "Not detected"; return key === "ram_mb" ? `${value.toLocaleString()} MB` : value; },
-        profileLabel(profile) { return ({ office_desktop: "Office Desktop", laptop: "Laptop", minimal: "Minimal" })[profile] || profile || "Unknown"; },
+        displayParsed(key) {
+          const value = this.importResult?.parsed?.[key] ?? this.importResult?.parsed_fields?.[key];
+          if (value === null || value === undefined || value === "") return "Not detected";
+          return key === "ram_mb" ? `${Number(value).toLocaleString()} MB` : value;
+        },
+        profileLabel(profile) {
+          const provider = this.importResult?.provider?.name;
+          return ({ office_desktop: "Office Desktop", laptop: "Laptop", minimal: "Minimal" })[profile] || profile || provider || "Unknown";
+        },
         statusClass(status) { return ({ active: "bg-emerald-400/10 text-emerald-300", maintenance: "bg-amber-400/10 text-amber-300", stock: "bg-cyan-400/10 text-cyan-300", retired: "bg-slate-700 text-slate-400" })[status?.toLowerCase()] || "bg-slate-700 text-slate-300"; },
         monitoringStatusClass(status) { return ({ PASS: "bg-emerald-400/10 text-emerald-300", WARNING: "bg-amber-400/10 text-amber-300", FAILED: "bg-rose-400/10 text-rose-300", UNKNOWN: "bg-slate-700 text-slate-300" })[status] || "bg-slate-700 text-slate-300"; },
         initials(name) { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(); },
