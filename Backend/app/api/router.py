@@ -482,18 +482,20 @@ def get_invoice(asset_id: int, db: Session = Depends(get_db), _: AuthenticatedUs
 
 
 @compat_router.get("/export/excel")
-def export_excel(lang: str = Query("en", pattern="^(en|fa)$"), db: Session = Depends(get_db), user: AuthenticatedUser = Depends(get_current_user)) -> StreamingResponse:
+def export_excel(lang: str = Query("en", pattern="^(en|fa)$"), asset_id: list[int] | None = Query(default=None), db: Session = Depends(get_db), user: AuthenticatedUser = Depends(get_current_user)) -> StreamingResponse:
     """Download an Excel asset export."""
-    report = create_excel_report(asset_report_rows(db), lang)
+    rows = _selected_asset_rows(db, asset_id)
+    report = create_excel_report(rows, lang)
     db.add(ExportLog(export_type="excel", user_id=user.id, username=user.username))
     db.commit()
     return StreamingResponse(report, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 @compat_router.get("/export/pdf")
-def export_pdf(lang: str = Query("en", pattern="^(en|fa)$"), db: Session = Depends(get_db), user: AuthenticatedUser = Depends(get_current_user)) -> StreamingResponse:
+def export_pdf(lang: str = Query("en", pattern="^(en|fa)$"), asset_id: list[int] | None = Query(default=None), db: Session = Depends(get_db), user: AuthenticatedUser = Depends(get_current_user)) -> StreamingResponse:
     """Download a PDF asset export."""
-    report = create_pdf_report(asset_report_rows(db), lang)
+    rows = _selected_asset_rows(db, asset_id)
+    report = create_pdf_report(rows, lang)
     db.add(ExportLog(export_type="pdf", user_id=user.id, username=user.username))
     db.commit()
     return StreamingResponse(report, media_type="application/pdf")
@@ -618,3 +620,15 @@ def _require_another_admin(db: Session, excluded_user_id: int) -> None:
 
 def _recent_activity(db: Session) -> list[dict[str, Any]]:
     return []
+
+
+def _selected_asset_rows(db: Session, asset_ids: list[int] | None) -> list[dict[str, Any]]:
+    if asset_ids is None:
+        return asset_report_rows(db)
+    unique_ids = list(dict.fromkeys(asset_ids))
+    if not unique_ids:
+        raise HTTPException(422, "Select at least one asset")
+    rows = asset_report_rows(db, unique_ids)
+    if len(rows) != len(unique_ids):
+        raise HTTPException(404, "One or more selected assets were not found")
+    return rows

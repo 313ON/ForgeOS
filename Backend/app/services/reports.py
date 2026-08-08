@@ -25,9 +25,12 @@ FONT_CANDIDATES = (
 )
 
 
-def asset_report_rows(db: Session) -> list[dict[str, Any]]:
+def asset_report_rows(db: Session, asset_ids: Sequence[int] | None = None) -> list[dict[str, Any]]:
     """Return normalized asset rows shared by Excel and PDF exporters."""
-    assets = db.scalars(select(Asset).order_by(Asset.asset_tag)).all()
+    query = select(Asset)
+    if asset_ids is not None:
+        query = query.where(Asset.id.in_(asset_ids))
+    assets = db.scalars(query.order_by(Asset.asset_tag, Asset.id)).all()
     return [
         {
             "asset_tag": asset.asset_tag,

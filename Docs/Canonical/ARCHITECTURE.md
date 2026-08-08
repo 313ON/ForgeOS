@@ -26,6 +26,18 @@ PostgreSQL
 
 ForgeOS currently uses additive, idempotent SQLite migrations in
 `Backend/app/db/migrations.py`. Alembic is not configured in the prototype.
+New Warehouse and Reference Archive tables are created additively through the
+existing SQLAlchemy `create_all` startup pattern; existing tables and data are not reset.
+
+## Operations Modules
+
+- Warehouse stock is changed only through an append-only receive, issue, or adjustment
+  movement record. Administrative authorization is required for mutations.
+- Reference documents are stored under private backend data storage with generated names.
+  API authorization is required for metadata and file access; storage paths are never
+  returned to clients.
+- Asset PDF/XLSX exports accept repeated `asset_id` query parameters for server-validated
+  selected exports. Missing selected identifiers fail the whole export.
 
 ## Monitoring
 

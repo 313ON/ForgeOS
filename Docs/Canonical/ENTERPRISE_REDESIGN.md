@@ -97,6 +97,12 @@ capacity is authoritative for current Linux-side development and validation. The
   disables unimplemented runtime controls.
 - The Security & Governance workspace shows permission mapping, operator state where
   authorized, export evidence, and explicit security gaps.
+- The Warehouse API provides searchable stock records, low-stock state, linked assets,
+  and an auditable movement ledger with backend-authoritative administrator mutations.
+- The Reference Archive API provides validated private uploads, searchable metadata,
+  safe downloads, and explicit preview capability without exposing storage paths.
+- Asset selection now drives server-validated PDF and XLSX exports instead of a
+  client-generated JSON-only artifact.
 
 ### Assumptions
 

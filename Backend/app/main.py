@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .api.router import compat_router, router
 from .api.targets import router as targets_router, v1_router as monitoring_targets_router
+from .api.operations import router as operations_router
 from .database import initialize_database
 from .seed import seed_database
 from .services.scheduler import monitoring_loop
@@ -41,6 +42,7 @@ app.include_router(router)
 app.include_router(compat_router)
 app.include_router(targets_router)
 app.include_router(monitoring_targets_router)
+app.include_router(operations_router)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -60,6 +62,8 @@ def dashboard() -> FileResponse:
 @app.get("/import", include_in_schema=False)
 @app.get("/dashboard", include_in_schema=False)
 @app.get("/preferences", include_in_schema=False)
+@app.get("/warehouse", include_in_schema=False)
+@app.get("/references", include_in_schema=False)
 def dashboard_section() -> FileResponse:
     """Serve the SPA shell for dashboard deep links."""
     return FileResponse(STATIC_DIR / "index.html")

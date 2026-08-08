@@ -357,3 +357,87 @@ class ExportLogOut(ORMModel):
     export_type: str
     created_at: datetime
     username: str
+
+
+class WarehouseItemCreate(BaseModel):
+    sku: str = Field(min_length=1, max_length=100)
+    name: str = Field(min_length=1, max_length=200)
+    category: str = Field(default="Other", min_length=1, max_length=100)
+    unit: str = Field(default="piece", min_length=1, max_length=50)
+    minimum_stock: int = Field(default=0, ge=0)
+    storage_location: str | None = Field(default=None, max_length=150)
+    bin_code: str | None = Field(default=None, max_length=100)
+    condition: str | None = Field(default=None, max_length=50)
+    vendor: str | None = Field(default=None, max_length=150)
+    serial_number: str | None = Field(default=None, max_length=150)
+    batch_number: str | None = Field(default=None, max_length=100)
+    linked_asset_id: int | None = None
+    notes: str | None = None
+
+
+class WarehouseItemUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    category: str | None = Field(default=None, min_length=1, max_length=100)
+    unit: str | None = Field(default=None, min_length=1, max_length=50)
+    minimum_stock: int | None = Field(default=None, ge=0)
+    storage_location: str | None = Field(default=None, max_length=150)
+    bin_code: str | None = Field(default=None, max_length=100)
+    condition: str | None = Field(default=None, max_length=50)
+    vendor: str | None = Field(default=None, max_length=150)
+    serial_number: str | None = Field(default=None, max_length=150)
+    batch_number: str | None = Field(default=None, max_length=100)
+    linked_asset_id: int | None = None
+    notes: str | None = None
+
+
+class WarehouseMovementCreate(BaseModel):
+    movement_type: Literal["incoming", "outgoing", "adjustment_add", "adjustment_remove"]
+    quantity: int = Field(gt=0)
+    reference: str | None = Field(default=None, max_length=200)
+    notes: str | None = None
+
+
+class WarehouseMovementRead(ORMModel):
+    id: int
+    item_id: int
+    movement_type: str
+    quantity: int
+    reference: str | None
+    notes: str | None
+    actor_username: str
+    created_at: datetime
+
+
+class WarehouseItemRead(ORMModel):
+    id: int
+    sku: str
+    name: str
+    category: str
+    quantity: int
+    unit: str
+    minimum_stock: int
+    storage_location: str | None
+    bin_code: str | None
+    condition: str | None
+    vendor: str | None
+    serial_number: str | None
+    batch_number: str | None
+    linked_asset_id: int | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+    low_stock: bool = False
+
+
+class ReferenceDocumentRead(ORMModel):
+    id: int
+    title: str
+    category: str
+    tags: list[str] = Field(default_factory=list)
+    description: str | None
+    original_filename: str
+    media_type: str
+    size_bytes: int
+    uploaded_by_username: str
+    created_at: datetime
+    preview_supported: bool = False

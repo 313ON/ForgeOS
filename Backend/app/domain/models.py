@@ -216,3 +216,85 @@ class ExportLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     username: Mapped[str] = mapped_column(String(100), nullable=False)
+
+
+class WarehouseItem(Base):
+    """A stocked component or consumable managed by ForgeOS."""
+
+    __tablename__ = "warehouse_items"
+    __table_args__ = (
+        CheckConstraint("quantity >= 0", name="ck_warehouse_items_quantity_non_negative"),
+        CheckConstraint("minimum_stock >= 0", name="ck_warehouse_items_minimum_stock_non_negative"),
+        Index("ix_warehouse_items_sku", "sku", unique=True),
+        Index("ix_warehouse_items_category", "category"),
+        Index("ix_warehouse_items_location", "storage_location"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sku: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False, default="Other")
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unit: Mapped[str] = mapped_column(String(50), nullable=False, default="piece")
+    minimum_stock: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    storage_location: Mapped[str | None] = mapped_column(String(150))
+    bin_code: Mapped[str | None] = mapped_column(String(100))
+    condition: Mapped[str | None] = mapped_column(String(50))
+    vendor: Mapped[str | None] = mapped_column(String(150))
+    serial_number: Mapped[str | None] = mapped_column(String(150))
+    batch_number: Mapped[str | None] = mapped_column(String(100))
+    linked_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id", ondelete="SET NULL"))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    movements: Mapped[list[WarehouseMovement]] = relationship(
+        back_populates="item", cascade="all, delete-orphan"
+    )
+
+
+class WarehouseMovement(Base):
+    """Append-only stock movement ledger."""
+
+    __tablename__ = "warehouse_movements"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_warehouse_movements_quantity_positive"),
+        Index("ix_warehouse_movements_item_created", "item_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(
+        ForeignKey("warehouse_items.id", ondelete="CASCADE"), nullable=False
+    )
+    movement_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    reference: Mapped[str | None] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(Text)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    actor_username: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    item: Mapped[WarehouseItem] = relationship(back_populates="movements")
+
+
+class ReferenceDocument(Base):
+    """Metadata for a safely stored reference document."""
+
+    __tablename__ = "reference_documents"
+    __table_args__ = (
+        Index("ix_reference_documents_title", "title"),
+        Index("ix_reference_documents_category", "category"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False, default="Other")
+    tags: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    media_type: Mapped[str] = mapped_column(String(150), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    uploaded_by_username: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

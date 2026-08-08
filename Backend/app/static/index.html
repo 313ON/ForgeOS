@@ -404,9 +404,78 @@
               <p class="telemetry-text text-[10px] text-cyan-300" x-text="`${selectedAssetIds.length} ASSETS SELECTED`"></p>
               <p class="text-[10px] text-muted">Mutation endpoints are single-record; safe client export is available.</p>
             </div>
-            <button type="button" @click="exportSelectedAssets()" class="btn--secondary">Export JSON</button>
+            <button type="button" @click="exportSelectedAssets('excel')" class="btn--secondary">Export XLSX</button>
+            <button type="button" @click="exportSelectedAssets('pdf')" class="btn--secondary">Export PDF</button>
             <button type="button" @click="selectedAssetIds = []" class="btn--ghost text-slate-300">Clear</button>
           </div>
+        </section>
+
+        <section x-show="page === 'warehouse'" x-cloak x-transition.opacity>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-amber-300">WAREHOUSE</p>
+              <h2 class="page-title">Stock and movement ledger</h2>
+              <p class="page-subtitle">Auditable receive, issue, and adjustment records for infrastructure parts and consumables.</p>
+            </div>
+            <div class="action-bar__actions">
+              <button type="button" @click="loadWarehouse()" class="btn--secondary">Refresh</button>
+            </div>
+          </div>
+          <div class="table-shell">
+            <div class="table-shell__header p-3">
+              <input x-model="warehouseSearch" type="search" placeholder="Search SKU, name, serial..." class="form-control max-w-md">
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr><th>SKU / Item</th><th>Category</th><th>Stock</th><th>Location</th><th>Condition</th></tr></thead>
+                <tbody>
+                  <template x-for="item in filteredWarehouseItems" :key="item.id">
+                    <tr>
+                      <td><p class="font-semibold text-white" x-text="item.name"></p><p class="technical-value text-xs text-muted" x-text="item.sku"></p></td>
+                      <td x-text="item.category"></td>
+                      <td><span class="status-chip" :class="item.low_stock ? 'text-amber-300' : 'text-emerald-300'" x-text="`${item.quantity} ${item.unit}${item.low_stock ? ' · LOW' : ''}`"></span></td>
+                      <td x-text="[item.storage_location, item.bin_code].filter(Boolean).join(' / ') || '—'"></td>
+                      <td x-text="item.condition || '—'"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div x-show="!filteredWarehouseItems.length" class="empty-state empty-state--tight text-center text-sm text-muted">No warehouse items match the current search.</div>
+          </div>
+        </section>
+
+        <section x-show="page === 'references'" x-cloak x-transition.opacity>
+          <div class="action-bar">
+            <div class="action-bar__text">
+              <p class="section-label text-cyan-300">REFERENCE ARCHIVE</p>
+              <h2 class="page-title">Technical documents</h2>
+              <p class="page-subtitle">Authorization-aware metadata and downloads; unsupported formats remain download-only.</p>
+            </div>
+            <div class="action-bar__actions">
+              <button type="button" @click="loadReferences()" class="btn--secondary">Refresh</button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <input x-model="referenceSearch" type="search" placeholder="Search titles, tags, categories..." class="form-control max-w-md">
+          </div>
+          <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <template x-for="document in filteredReferences" :key="document.id">
+              <article class="enterprise-panel p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0"><h3 class="truncate font-semibold text-white" x-text="document.title"></h3><p class="technical-value mt-1 truncate text-[10px] text-muted" x-text="document.original_filename"></p></div>
+                  <span class="status-chip" x-text="document.category"></span>
+                </div>
+                <p class="mt-3 line-clamp-3 text-xs text-secondary" x-text="document.description || 'No description provided.'"></p>
+                <div class="mt-3 flex flex-wrap gap-1"><template x-for="tag in document.tags" :key="tag"><span class="status-chip" x-text="tag"></span></template></div>
+                <div class="mt-4 flex gap-2 border-t border-[#2E3440] pt-3">
+                  <button x-show="document.preview_supported" type="button" @click="openReference(document, true)" class="btn--secondary">Preview</button>
+                  <button type="button" @click="openReference(document, false)" class="btn--primary">Download</button>
+                </div>
+              </article>
+            </template>
+          </div>
+          <div x-show="!filteredReferences.length" class="empty-state empty-state--loose text-center text-sm text-muted">No reference documents match the current search.</div>
         </section>
 
         <section x-show="page === 'people'" x-cloak x-transition.opacity>
@@ -1375,7 +1444,7 @@
         currentUser: null, loginForm: { username: "", password: "" },
         language: localStorage.getItem("forgeos-language") || "en", dictionary: {},
         dragging: false, selectedFile: null, uploading: false, uploadProgress: 0, importResult: null,
-        assetSearch: "", userSearch: "", assets: [], people: [], users: [], targets: [], monitoringHistory: [], selectedTarget: null, selectedTargetLogs: [], toasts: [], lastUpdated: "just now",
+        assetSearch: "", userSearch: "", warehouseSearch: "", referenceSearch: "", assets: [], people: [], users: [], targets: [], warehouseItems: [], references: [], monitoringHistory: [], selectedTarget: null, selectedTargetLogs: [], toasts: [], lastUpdated: "just now",
         selectedAssetIds: [], assetSorts: [{ key: "asset_tag", direction: "asc" }],
         selectedAiAssetId: "", agentPrompt: "", aiInsight: null, aiLoading: false,
         monitoringLoading: false, monitoringSaving: false, monitoringError: "", selectedLogsLoading: false, selectedLogsError: "", showTargetForm: false, monitoringTimer: null,
@@ -1409,6 +1478,8 @@ navigation: [
           { id: "execution", label: "Agent Execution", icon: icon('<path d="M8 9h8M8 13h5"/><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5l-4 3v-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>') },
           { id: "monitoring", label: "Network Topology", icon: icon('<circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="m7 11 10-4M7 13l10 4"/>') },
           { id: "assets", label: "Asset Registry", labelKey: "nav.assets", icon: icon('<path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4"/>') },
+          { id: "warehouse", label: "Warehouse", icon: icon('<path d="M3 9 12 4l9 5v11H3V9Z"/><path d="M8 20v-6h8v6M3 9h18"/>') },
+          { id: "references", label: "References", icon: icon('<path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>') },
           { id: "people", label: "People", labelKey: "nav.people", icon: icon('<circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M16 4.5a4 4 0 0 1 0 7.5M18 15a6 6 0 0 1 3.5 6"/>') },
           { id: "security", label: "Security & Governance", icon: icon('<path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/><path d="m9 12 2 2 4-5"/>') },
           { id: "import", label: "System Intake", labelKey: "nav.import", icon: icon('<path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>') },
@@ -1489,12 +1560,20 @@ navigation: [
            if (window.forgeI18n) await window.forgeI18n.setLanguage(this.language);
            if (this.authenticated) {
              try { this.currentUser = await this.api("/api/v1/auth/me"); } catch (_) { this.logout(); }
-              if (this.authenticated) await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.refreshMonitoring(false), this.loadUsers(), this.loadExportHistory()]);
+              if (this.authenticated) await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.refreshMonitoring(false), this.loadUsers(), this.loadExportHistory(), this.loadWarehouse(), this.loadReferences()]);
            }
            if (["dashboard", "monitoring"].includes(this.page)) this.startMonitoringPolling();
            this.loading = false;
          },
         get isAdmin() { return String(this.currentUser?.role || "").toUpperCase() === "ADMIN"; },
+        get filteredWarehouseItems() {
+          const query = this.warehouseSearch.trim().toLowerCase();
+          return query ? this.warehouseItems.filter(item => [item.sku, item.name, item.category, item.serial_number, item.storage_location].filter(Boolean).some(value => String(value).toLowerCase().includes(query))) : this.warehouseItems;
+        },
+        get filteredReferences() {
+          const query = this.referenceSearch.trim().toLowerCase();
+          return query ? this.references.filter(item => [item.title, item.category, item.original_filename, ...(item.tags || [])].filter(Boolean).some(value => String(value).toLowerCase().includes(query))) : this.references;
+        },
         get monitoringSummary() {
           const total = this.targets.length;
           const passing = this.targets.filter(item => item.status === "PASS").length;
@@ -1677,17 +1756,16 @@ navigation: [
             ? [...new Set([...this.selectedAssetIds, ...visibleIds])]
             : this.selectedAssetIds.filter(id => !visibleIds.includes(id));
         },
-        exportSelectedAssets() {
-          const selected = this.assets.filter(asset => this.selectedAssetIds.includes(asset.id));
-          if (!selected.length) return;
-          const blob = new Blob([JSON.stringify(selected, null, 2)], { type: "application/json" });
-          const href = URL.createObjectURL(blob);
-          const anchor = document.createElement("a");
-          anchor.href = href;
-          anchor.download = `forgeos-assets-${new Date().toISOString().slice(0, 10)}.json`;
-          anchor.click();
-          setTimeout(() => URL.revokeObjectURL(href), 0);
-          this.toast(`Exported ${selected.length} selected asset${selected.length === 1 ? "" : "s"}`);
+        async exportSelectedAssets(format) {
+          if (!this.selectedAssetIds.length) return;
+          const query = new URLSearchParams({ lang: this.language });
+          this.selectedAssetIds.forEach(id => query.append("asset_id", String(id)));
+          try {
+            await window.forgeApi.download(`/api/export/${format}?${query}`, `forgeos-selected-assets.${format === "excel" ? "xlsx" : "pdf"}`);
+            this.toast(`Exported ${this.selectedAssetIds.length} selected asset${this.selectedAssetIds.length === 1 ? "" : "s"}`);
+          } catch (error) {
+            this.toast(error.message, "error");
+          }
         },
         topologyNodeClass(status) {
           return ({ PASS: "topology-node--pass", WARNING: "topology-node--warning", FAILED: "topology-node--failed" })[status] || "";
@@ -1774,6 +1852,12 @@ navigation: [
         },
         async loadSummary() { try { this.summary = await this.api("/api/v1/dashboard/summary"); this.lastUpdated = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch (error) { this.toast(error.message, "error"); } },
         async loadAssets() { try { this.assets = await this.api("/api/v1/assets"); } catch (error) { this.toast(error.message, "error"); } },
+        async loadWarehouse() { try { this.warehouseItems = await this.api("/api/v1/warehouse/items"); } catch (error) { this.toast(error.message, "error"); } },
+        async loadReferences() { try { this.references = await this.api("/api/v1/references"); } catch (error) { this.toast(error.message, "error"); } },
+        async openReference(document, preview = false) {
+          try { await window.forgeApi.download(`/api/v1/references/${document.id}/download?preview=${preview}`, document.original_filename); }
+          catch (error) { this.toast(error.message, "error"); }
+        },
         async loadPeople() { try { this.people = await this.api("/api/v1/people"); } catch (error) { this.toast(error.message, "error"); } },
          async loadUsers() { if (this.isAdmin) try { this.users = await this.api("/api/v1/users"); } catch (error) { this.toast(error.message, "error"); } },
          async loadTargets() { try { this.targets = await this.api("/api/v1/monitoring/targets"); } catch (error) { this.toast(error.message, "error"); } },

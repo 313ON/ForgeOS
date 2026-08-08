@@ -365,6 +365,29 @@ main {
   border-top: 1px solid var(--border-surface);
 }
 
+.form-control {
+  width: 100%;
+  min-height: 2.5rem;
+  border: 1px solid var(--border-surface);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  padding: 0.625rem 0.75rem;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.form-control:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.1);
+}
+
+.technical-value {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: var(--font-mono);
+  text-align: left;
+}
+
 /* ============================================
    CARDS
    ============================================ */
@@ -698,6 +721,17 @@ main {
   background: var(--bg-secondary);
   padding: 0.625rem 0.75rem;
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.48);
+}
+
+html[dir="rtl"] .bulk-drawer {
+  right: auto;
+  left: 1rem;
+}
+
+html[dir="rtl"] .table-shell th,
+html[dir="rtl"] .table-shell td,
+html[dir="rtl"] .command-option {
+  text-align: right;
 }
 
 .skip-link {
