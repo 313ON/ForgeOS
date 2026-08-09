@@ -12,9 +12,30 @@ sys.path.insert(0, str(PROJECT_ROOT / "Backend"))
 from app.main import app
 
 
+def registered_routes() -> list[tuple[str, str]]:
+    """Expand FastAPI routes, including lazily included routers."""
+    pairs: list[tuple[str, str]] = []
+
+    def collect(route: object) -> None:
+        methods = getattr(route, "methods", None)
+        path = getattr(route, "path", None)
+        if methods and path:
+            pairs.extend((method, path) for method in methods)
+            return
+        original_router = getattr(route, "original_router", None)
+        if original_router is not None:
+            for child in original_router.routes:
+                collect(child)
+
+    for route in app.routes:
+        collect(route)
+    return pairs
+
+
 def main() -> int:
     """Check required routes and duplicate method/path pairs."""
-    routes = {(method, route.path) for route in app.routes for method in getattr(route, "methods", set())}
+    registrations = registered_routes()
+    routes = set(registrations)
     required = {
         ("GET", "/api/v1/people"),
         ("POST", "/api/v1/people"),
@@ -33,9 +54,7 @@ def main() -> int:
     if missing:
         print(f"Missing routes: {sorted(missing)}")
         return 1
-    duplicates = [
-        item for item in routes if sum(1 for route in app.routes if item[0] in getattr(route, "methods", set()) and item[1] == route.path) > 1
-    ]
+    duplicates = [item for item in routes if registrations.count(item) > 1]
     if duplicates:
         print(f"Duplicate routes: {sorted(set(duplicates))}")
         return 1

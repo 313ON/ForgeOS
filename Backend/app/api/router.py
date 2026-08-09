@@ -525,7 +525,11 @@ def run_monitoring_check(target: MonitoredTarget, db: Session) -> NetworkLog:
     result = check_target(target)
     target.status = result.status
     target.last_latency_ms = result.latency_ms
-    target.last_checked_at = now_utc()
+    target.last_checked_at = result.completed_at or now_utc()
+    if result.status == "PASS":
+        target.last_success_at = target.last_checked_at
+    target.last_packet_loss_percent = result.packet_loss_percent
+    target.last_jitter_ms = result.jitter_ms
     target.last_error = result.message
     target.ssl_metadata = json_metadata(result.ssl_metadata)
     status_code = {"PASS": 1, "FAILED": 0}.get(result.status, -1)
@@ -533,6 +537,11 @@ def run_monitoring_check(target: MonitoredTarget, db: Session) -> NetworkLog:
         target_id=target.id, latency_ms=result.latency_ms, status_code=status_code,
         check_type=target.target_type, status=result.status, message=result.message,
         response_status_code=result.response_status_code,
+        packets_sent=result.packets_sent, packets_received=result.packets_received,
+        packet_loss_percent=result.packet_loss_percent,
+        min_latency_ms=result.min_latency_ms, max_latency_ms=result.max_latency_ms,
+        jitter_ms=result.jitter_ms, started_at=result.started_at,
+        completed_at=result.completed_at, probe_source=result.probe_source,
     )
     db.add(event)
     db.commit()

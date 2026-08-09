@@ -24,15 +24,14 @@ def test_summary_warning_groups_are_safe_when_arrays_are_missing() -> None:
     assert "Array.isArray(w.expiring_warranties)" in html
 
 
-def test_asset_component_javascript_has_valid_syntax(tmp_path: Path) -> None:
+def test_asset_component_javascript_has_valid_syntax() -> None:
     html = INDEX_PATH.read_text(encoding="utf-8")
     match = re.search(r"(function forgeApp\(\).*?)</script>", html, re.DOTALL)
     assert match is not None
-    script_path = tmp_path / "forge_app.js"
-    script_path.write_text(match.group(1), encoding="utf-8")
 
     result = subprocess.run(
-        ["node", "--check", str(script_path)],
+        ["node", "--check", "-"],
+        input=match.group(1),
         capture_output=True,
         text=True,
         timeout=30,

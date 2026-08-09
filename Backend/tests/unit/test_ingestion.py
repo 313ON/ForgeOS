@@ -33,6 +33,8 @@ class IngestionParserTests(unittest.TestCase):
                 "gpu_name",
                 "bios_version",
                 "ip_address",
+                "storage_type",
+                "storage_capacity",
             },
         )
         self.assertTrue(all(value is None for value in parsed.values()))

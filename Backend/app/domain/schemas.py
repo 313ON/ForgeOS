@@ -327,6 +327,9 @@ class TargetOut(ORMModel):
     status: Literal["PASS", "WARNING", "FAILED", "UNKNOWN"]
     last_latency_ms: float | None
     last_checked_at: datetime | None
+    last_success_at: datetime | None = None
+    last_packet_loss_percent: float | None = None
+    last_jitter_ms: float | None = None
     last_error: str | None
     ssl_metadata: dict[str, object] | None = None
     created_at: datetime
@@ -347,6 +350,15 @@ class NetworkLogOut(ORMModel):
     status: Literal["PASS", "WARNING", "FAILED", "UNKNOWN"]
     message: str | None = None
     response_status_code: int | None = None
+    packets_sent: int | None = None
+    packets_received: int | None = None
+    packet_loss_percent: float | None = None
+    min_latency_ms: float | None = None
+    max_latency_ms: float | None = None
+    jitter_ms: float | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    probe_source: str = "local"
     timestamp: datetime
 
 

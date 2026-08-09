@@ -154,6 +154,7 @@ Size         : 1000204886016
         self.assertEqual(result.parsed_fields["ip_address"], "192.0.2.10")
         self.assertTrue(any(issue.filename == "readme.txt" for issue in result.warnings))
         self.assertTrue(any(issue.filename == "storage.log" for issue in result.warnings))
+        self.assertTrue(any(issue.filename == "ipconfig.txt" for issue in result.warnings))
         self.assertFalse(result.errors)
 
     def test_unsupported_batch_returns_structured_failure(self) -> None:

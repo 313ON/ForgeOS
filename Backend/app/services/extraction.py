@@ -113,10 +113,23 @@ def extract_reports(reports: list[tuple[str, str]]) -> ExtractResponse:
         sources.extend(result.sources)
         if result.unmapped:
             unmapped.update(result.unmapped)
+        conflicts: list[str] = []
         for key, value in result.parsed_fields.items():
+            if key in parsed_fields and parsed_fields[key] != value:
+                conflicts.append(key)
             parsed_fields.setdefault(key, value)
         for candidate in result.candidates:
             candidates.append(candidate.model_copy(update={"source_file": filename}))
+        if conflicts:
+            warnings.append(
+                ExtractIssue(
+                    filename=filename,
+                    message=(
+                        "Conflicting values were preserved as candidates for manual review: "
+                        + ", ".join(sorted(conflicts))
+                    ),
+                )
+            )
         if not result.candidates:
             warnings.append(
                 ExtractIssue(

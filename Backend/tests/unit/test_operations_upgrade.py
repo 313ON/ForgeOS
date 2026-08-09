@@ -8,7 +8,9 @@ from app.services.ingestion import parse_systeminfo
 from app.services.monitoring import (
     FAILED,
     PASS,
+    WARNING,
     check_network,
+    parse_ping_output,
     validate_network_host,
     validate_website_url,
 )
@@ -45,7 +47,7 @@ class OperationsUpgradeTests(unittest.TestCase):
         result = check_network("192.0.2.10", timeout=1)
         self.assertEqual(result.status, PASS)
         self.assertEqual(run.call_args.kwargs["shell"], False)
-        self.assertEqual(run.call_args.args[0][:4], ["ping", "-n", "1", "-w"])
+        self.assertEqual(run.call_args.args[0][:4], ["ping", "-n", "4", "-w"])
 
     @patch("app.services.monitoring.subprocess.run")
     @patch("app.services.monitoring.platform.system", return_value="Linux")
@@ -53,7 +55,53 @@ class OperationsUpgradeTests(unittest.TestCase):
         run.return_value.returncode = 1
         result = check_network("192.0.2.10", timeout=1)
         self.assertEqual(result.status, FAILED)
-        self.assertEqual(run.call_args.args[0][:4], ["ping", "-c", "1", "-W"])
+        self.assertEqual(run.call_args.args[0][:4], ["ping", "-c", "4", "-W"])
+
+    def test_ping_parser_extracts_windows_metrics(self) -> None:
+        metrics = parse_ping_output(
+            "Reply from 192.0.2.10: bytes=32 time=10ms TTL=57\n"
+            "Reply from 192.0.2.10: bytes=32 time=14ms TTL=57\n"
+            "Packets: Sent = 2, Received = 2, Lost = 0 (0% loss)"
+        )
+
+        self.assertEqual(metrics.samples_ms, (10.0, 14.0))
+        self.assertEqual(metrics.packets_sent, 2)
+        self.assertEqual(metrics.packets_received, 2)
+        self.assertEqual(metrics.packet_loss_percent, 0)
+        self.assertEqual(metrics.average_latency_ms, 12)
+        self.assertEqual(metrics.jitter_ms, 4)
+
+    def test_ping_parser_extracts_unix_metrics(self) -> None:
+        metrics = parse_ping_output(
+            "64 bytes from 192.0.2.10: icmp_seq=1 ttl=57 time=8.25 ms\n"
+            "64 bytes from 192.0.2.10: icmp_seq=2 ttl=57 time=10.75 ms\n"
+            "2 packets transmitted, 2 received, 0% packet loss, time 1001ms"
+        )
+
+        self.assertEqual(metrics.samples_ms, (8.25, 10.75))
+        self.assertEqual(metrics.packets_sent, 2)
+        self.assertEqual(metrics.packets_received, 2)
+        self.assertEqual(metrics.packet_loss_percent, 0)
+        self.assertEqual(metrics.average_latency_ms, 9.5)
+        self.assertEqual(metrics.jitter_ms, 2.5)
+
+    @patch("app.services.monitoring.subprocess.run")
+    @patch("app.services.monitoring.platform.system", return_value="Linux")
+    def test_network_check_maps_partial_packet_loss_to_warning(
+        self, platform_system, run
+    ) -> None:
+        run.return_value.returncode = 0
+        run.return_value.stdout = (
+            "64 bytes from 192.0.2.10: time=10 ms\n"
+            "4 packets transmitted, 3 received, 25% packet loss"
+        )
+
+        result = check_network("192.0.2.10", timeout=1)
+
+        self.assertEqual(result.status, WARNING)
+        self.assertEqual(result.packets_sent, 4)
+        self.assertEqual(result.packets_received, 3)
+        self.assertEqual(result.packet_loss_percent, 25)
 
 
 if __name__ == "__main__":

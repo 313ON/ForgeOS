@@ -410,55 +410,205 @@
           </div>
         </section>
 
-        <section x-show="page === 'warehouse'" x-cloak x-transition.opacity>
+<section x-show="page === 'warehouse'" x-cloak x-transition.opacity>
           <div class="action-bar">
             <div class="action-bar__text">
-              <p class="section-label text-amber-300">WAREHOUSE</p>
-              <h2 class="page-title">Stock and movement ledger</h2>
-              <p class="page-subtitle">Auditable receive, issue, and adjustment records for infrastructure parts and consumables.</p>
+              <p class="section-label text-amber-300" data-i18n="warehouse.overline">WAREHOUSE</p>
+              <h2 class="page-title" data-i18n="warehouse.title">Stock and movement ledger</h2>
+              <p class="page-subtitle" data-i18n="warehouse.subtitle">Auditable receive, issue, and adjustment records for infrastructure parts and consumables.</p>
             </div>
             <div class="action-bar__actions">
-              <button type="button" @click="loadWarehouse()" class="btn--secondary">Refresh</button>
+              <button x-show="isAdmin" type="button" @click="openWarehouseItemForm()" class="btn--primary" data-i18n="warehouse.add_item">+ Add Item</button>
+              <button type="button" @click="loadWarehouse(true)" class="btn--secondary" data-i18n="warehouse.refresh">Refresh</button>
             </div>
           </div>
           <div class="table-shell">
             <div class="table-shell__header p-3">
-              <input x-model="warehouseSearch" type="search" placeholder="Search SKU, name, serial..." class="form-control max-w-md">
+              <label class="field max-w-md">
+                <span class="sr-only" data-i18n="warehouse.search">Search warehouse items</span>
+                <input x-model="warehouseSearch" type="search" :placeholder="translated('warehouse.search_placeholder', 'Search SKU, name, serial…')" :aria-label="translated('warehouse.search', 'Search warehouse items')" class="control">
+              </label>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead><tr><th>SKU / Item</th><th>Category</th><th>Stock</th><th>Location</th><th>Condition</th></tr></thead>
-                <tbody>
+            <div x-show="warehouseLoading" class="loading-state p-6 text-sm" data-i18n="warehouse.loading">Loading warehouse items…</div>
+            <div class="table-scroll">
+              <table class="w-full text-sm">
+                <thead class="border-b border-slate-800/80 bg-slate-950/30 text-xs uppercase tracking-wider text-muted">
+                  <tr>
+                    <th class="px-4 py-3" data-i18n="warehouse.column_sku_item">SKU / Item</th>
+                    <th class="px-4 py-3" data-i18n="warehouse.column_category">Category</th>
+                    <th class="px-4 py-3" data-i18n="warehouse.column_stock">Stock</th>
+                    <th class="px-4 py-3" data-i18n="warehouse.column_location">Location</th>
+                    <th class="px-4 py-3" data-i18n="warehouse.column_condition">Condition</th>
+                    <th x-show="isAdmin" class="px-4 py-3" data-i18n="common.actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
                   <template x-for="item in filteredWarehouseItems" :key="item.id">
                     <tr>
-                      <td><p class="font-semibold text-white" x-text="item.name"></p><p class="technical-value text-xs text-muted" x-text="item.sku"></p></td>
-                      <td x-text="item.category"></td>
-                      <td><span class="status-chip" :class="item.low_stock ? 'text-amber-300' : 'text-emerald-300'" x-text="`${item.quantity} ${item.unit}${item.low_stock ? ' · LOW' : ''}`"></span></td>
-                      <td x-text="[item.storage_location, item.bin_code].filter(Boolean).join(' / ') || '—'"></td>
-                      <td x-text="item.condition || '—'"></td>
+                      <td class="px-4 py-3"><p class="font-semibold text-white" x-text="item.name"></p><p class="technical-value text-xs text-muted" x-text="item.sku"></p></td>
+                      <td class="px-4 py-3 text-slate-300" x-text="item.category"></td>
+                      <td class="px-4 py-3"><span class="status-chip" :class="item.low_stock ? 'text-amber-300' : 'text-emerald-300'" x-text="stockLabel(item)"></span></td>
+                      <td class="px-4 py-3">
+                        <p class="text-xs text-slate-400" x-show="item.storage_location" x-text="item.storage_location"></p>
+                        <p class="technical-value mt-0.5 text-xs text-muted" x-show="item.bin_code" x-text="item.bin_code"></p>
+                        <span class="text-secondary" x-show="!item.storage_location && !item.bin_code" x-text="'—'"></span>
+                      </td>
+                      <td class="px-4 py-3 text-xs text-slate-400" x-text="item.condition || '—'"></td>
+                      <td class="px-4 py-3" x-show="isAdmin">
+                        <div class="flex items-center gap-2">
+                          <button type="button" @click="openWarehouseItemForm(item)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-400/20" data-i18n="warehouse.edit">Edit</button>
+                          <button type="button" @click="openMovementForm(item)" class="rounded-lg bg-cyan-400/10 px-2.5 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20" data-i18n="warehouse.movement">Movement</button>
+                        </div>
+                      </td>
                     </tr>
                   </template>
                 </tbody>
               </table>
             </div>
-            <div x-show="!filteredWarehouseItems.length" class="empty-state empty-state--tight text-center text-sm text-muted">No warehouse items match the current search.</div>
+            <div x-show="!warehouseLoading && !filteredWarehouseItems.length" class="empty-state empty-state--loose text-center">
+              <p class="font-medium text-slate-300" x-text="warehouseSearch ? translated('warehouse.filtered_empty', 'No matching warehouse items.') : translated('warehouse.empty', 'No warehouse items configured yet.')"></p>
+              <p class="mt-1 text-sm text-secondary" x-text="warehouseSearch ? translated('warehouse.filtered_empty_help', 'Try another search term.') : translated('warehouse.empty_help', 'An administrator can add inventory and record movements.')"></p>
+            </div>
+          </div>
+
+          <div x-show="warehouseItemModal" x-cloak @keydown.escape.window="warehouseItemModal = false" class="modal-backdrop fixed inset-0 z-50 grid place-items-center bg-slate-950/85 p-4 backdrop-blur-sm">
+            <div @click.outside="warehouseItemModal = false" x-transition role="dialog" aria-modal="true" aria-labelledby="warehouse-item-title"
+                 class="enterprise-panel max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl p-6 sm:p-7">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em]" x-text="editingWarehouseItemId ? translated('warehouse.overline_edit', 'EDIT WAREHOUSE ITEM') : translated('warehouse.overline_new', 'NEW WAREHOUSE ITEM')"></p>
+                  <h3 id="warehouse-item-title" class="mt-1 text-xl font-semibold text-white" x-text="editingWarehouseItemId ? translated('warehouse.edit_title', 'Edit warehouse item') : translated('warehouse.new_title', 'Register warehouse item')"></h3>
+                  <p class="mt-1 text-sm text-slate-400" x-text="editingWarehouseItemId ? translated('warehouse.edit_help', 'Update item metadata. Stock changes are recorded through movements.') : translated('warehouse.new_help', 'Add an inventory item. Set a minimum stock to surface low-stock alerts.')"></p>
+                </div>
+                <button @click="warehouseItemModal = false" class="rounded-lg p-2 text-muted hover:bg-slate-800 hover:text-white" aria-label="Close warehouse item dialog">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
+              </div>
+              <form @submit.prevent="saveWarehouseItem()" class="mt-6 grid gap-4 sm:grid-cols-2">
+                <label class="sm:col-span-1">
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_sku">SKU</span>
+                  <input x-model="warehouseItemForm.sku" :disabled="Boolean(editingWarehouseItemId)" :placeholder="translated('warehouse.placeholder_sku', 'e.g. NIC-10G-SFP')" required
+                         class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10 disabled:opacity-50">
+                </label>
+                <label class="sm:col-span-1">
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_name">Item name</span>
+                  <input x-model="warehouseItemForm.name" required class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_category">Category</span>
+                  <input x-model="warehouseItemForm.category" list="warehouse-category-options" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                  <datalist id="warehouse-category-options">
+                    <option value="Cable"></option><option value="Connector"></option><option value="Power"></option><option value="Server"></option><option value="Storage"></option><option value="Network"></option><option value="Consumable"></option><option value="Other"></option>
+                  </datalist>
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_unit">Unit</span>
+                  <input x-model="warehouseItemForm.unit" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_minimum_stock">Minimum stock</span>
+                  <input x-model.number="warehouseItemForm.minimum_stock" type="number" min="0" step="1" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_storage_location">Storage location</span>
+                  <input x-model="warehouseItemForm.storage_location" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_bin_code">Bin code</span>
+                  <input x-model="warehouseItemForm.bin_code" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_condition">Condition</span>
+                  <input x-model="warehouseItemForm.condition" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_vendor">Vendor</span>
+                  <input x-model="warehouseItemForm.vendor" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_serial">Serial number</span>
+                  <input x-model="warehouseItemForm.serial_number" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_batch">Batch number</span>
+                  <input x-model="warehouseItemForm.batch_number" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label class="sm:col-span-2">
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.field_notes">Notes</span>
+                  <textarea x-model="warehouseItemForm.notes" rows="2" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10"></textarea>
+                </label>
+                <div class="flex justify-end gap-3 border-t border-slate-800 pt-5 sm:col-span-2">
+                  <button type="button" @click="warehouseItemModal = false" class="btn--secondary" data-i18n="modal.cancel">Cancel</button>
+                  <button type="submit" :disabled="warehouseSaving" class="btn--primary" x-text="warehouseSaving ? translated('warehouse.saving', 'Saving…') : translated('warehouse.save', 'Save')"></button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div x-show="movementModal" x-cloak @keydown.escape.window="movementModal = false" class="fixed inset-0 z-[55] grid place-items-center bg-slate-950/90 p-4 backdrop-blur-sm">
+            <div @click.outside="movementModal = false" x-transition class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h3 class="text-lg font-semibold text-white" data-i18n="warehouse.movement_title">Record movement</h3>
+                  <p class="mt-1 text-sm text-secondary" x-text="movementItem ? `${movementItem.name} · ${movementItem.sku}` : ''"></p>
+                </div>
+                <button @click="movementModal = false" class="rounded-lg p-2 text-muted hover:bg-slate-800 hover:text-white" aria-label="Close movement dialog">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
+              </div>
+              <form @submit.prevent="saveMovement()" class="mt-5 grid gap-4">
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.movement_type">Movement type</span>
+                  <select x-model="movementForm.movement_type" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                    <option value="incoming" x-text="translated('warehouse.movement_incoming', 'Incoming')"></option>
+                    <option value="outgoing" x-text="translated('warehouse.movement_outgoing', 'Outgoing')"></option>
+                    <option value="adjustment_add" x-text="translated('warehouse.movement_adjust_add', 'Adjustment (add)')"></option>
+                    <option value="adjustment_remove" x-text="translated('warehouse.movement_adjust_remove', 'Adjustment (remove)')"></option>
+                  </select>
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.movement_quantity">Quantity</span>
+                  <input x-model.number="movementForm.quantity" type="number" min="1" step="1" required class="w-full rounded-xl border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                  <span x-show="!isPositiveInt(movementForm.quantity)" class="mt-1.5 block text-xs text-rose-400" data-i18n="warehouse.error_quantity">Enter a positive whole number.</span>
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.movement_reference">Reference</span>
+                  <input x-model="movementForm.reference" placeholder="e.g. PO-2025-001" class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="warehouse.movement_notes">Notes</span>
+                  <textarea x-model="movementForm.notes" rows="2" class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-400/10"></textarea>
+                </label>
+                <div x-show="movementForm.movement_type === 'outgoing' || movementForm.movement_type === 'adjustment_remove'"
+                     class="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs text-amber-300" data-i18n="warehouse.movement_stockhint">Stock can only be reduced up to the current quantity.</div>
+                <div class="flex justify-end gap-3 border-t border-slate-800 pt-5">
+                  <button type="button" @click="movementModal = false" class="btn--secondary" data-i18n="modal.cancel">Cancel</button>
+                  <button type="submit" :disabled="movementSaving" class="btn--primary" x-text="movementSaving ? translated('warehouse.saving', 'Saving…') : translated('warehouse.movement_submit', 'Record movement')"></button>
+                </div>
+              </form>
+            </div>
           </div>
         </section>
 
-        <section x-show="page === 'references'" x-cloak x-transition.opacity>
+<section x-show="page === 'references'" x-cloak x-transition.opacity>
           <div class="action-bar">
             <div class="action-bar__text">
-              <p class="section-label text-cyan-300">REFERENCE ARCHIVE</p>
-              <h2 class="page-title">Technical documents</h2>
-              <p class="page-subtitle">Authorization-aware metadata and downloads; unsupported formats remain download-only.</p>
+              <p class="section-label text-cyan-300" data-i18n="references.overline">REFERENCE ARCHIVE</p>
+              <h2 class="page-title" data-i18n="references.title">Technical documents</h2>
+              <p class="page-subtitle" data-i18n="references.subtitle">Authorization-aware metadata and downloads; unsupported formats remain download-only.</p>
             </div>
             <div class="action-bar__actions">
-              <button type="button" @click="loadReferences()" class="btn--secondary">Refresh</button>
+              <button x-show="isAdmin" type="button" @click="openReferenceUpload()" class="btn--primary" data-i18n="references.upload">Upload</button>
+              <button type="button" @click="loadReferences(true)" class="btn--secondary" data-i18n="references.refresh">Refresh</button>
             </div>
           </div>
           <div class="mb-3">
-            <input x-model="referenceSearch" type="search" placeholder="Search titles, tags, categories..." class="form-control max-w-md">
+            <label class="field max-w-md">
+              <span class="sr-only" data-i18n="references.search">Search reference documents</span>
+              <input x-model="referenceSearch" type="search" :placeholder="translated('references.search_placeholder', 'Search titles, tags, categories…')" :aria-label="translated('references.search', 'Search reference documents')" class="control">
+            </label>
           </div>
+          <div x-show="referencesLoading" class="loading-state surface mb-3 p-6 text-center text-sm" data-i18n="references.loading">Loading reference documents…</div>
           <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <template x-for="document in filteredReferences" :key="document.id">
               <article class="enterprise-panel p-4">
@@ -466,16 +616,66 @@
                   <div class="min-w-0"><h3 class="truncate font-semibold text-white" x-text="document.title"></h3><p class="technical-value mt-1 truncate text-[10px] text-muted" x-text="document.original_filename"></p></div>
                   <span class="status-chip" x-text="document.category"></span>
                 </div>
-                <p class="mt-3 line-clamp-3 text-xs text-secondary" x-text="document.description || 'No description provided.'"></p>
+                <p class="mt-3 line-clamp-3 text-xs text-secondary" x-text="document.description || translated('references.no_description', 'No description provided.')"></p>
                 <div class="mt-3 flex flex-wrap gap-1"><template x-for="tag in document.tags" :key="tag"><span class="status-chip" x-text="tag"></span></template></div>
-                <div class="mt-4 flex gap-2 border-t border-[#2E3440] pt-3">
-                  <button x-show="document.preview_supported" type="button" @click="openReference(document, true)" class="btn--secondary">Preview</button>
-                  <button type="button" @click="openReference(document, false)" class="btn--primary">Download</button>
+                <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#2E3440] pt-3 text-[10px] text-muted">
+                  <span class="technical-value" x-text="document.media_type"></span>
+                  <span class="technical-value" x-text="formatBytes(document.size_bytes)"></span>
+                  <time x-text="formatDate(document.created_at)"></time>
+                </div>
+                <div class="mt-4 flex gap-2">
+                  <button x-show="document.preview_supported" type="button" @click="openReference(document, true)" class="btn--secondary" data-i18n="references.preview">Preview</button>
+                  <button type="button" @click="openReference(document, false)" class="btn--primary" data-i18n="references.download">Download</button>
                 </div>
               </article>
             </template>
           </div>
-          <div x-show="!filteredReferences.length" class="empty-state empty-state--loose text-center text-sm text-muted">No reference documents match the current search.</div>
+          <div x-show="!referencesLoading && !filteredReferences.length" class="empty-state empty-state--loose text-center">
+            <p class="font-medium text-slate-300" x-text="referenceSearch ? translated('references.filtered_empty', 'No matching reference documents.') : translated('references.empty', 'No reference documents have been uploaded yet.')"></p>
+            <p class="mt-1 text-sm text-secondary" x-text="referenceSearch ? translated('references.filtered_empty_help', 'Try another search term.') : translated('references.empty_help', 'An administrator can upload technical documentation.')"></p>
+          </div>
+
+          <div x-show="referenceUploadModal" x-cloak @keydown.escape.window="referenceUploadModal = false" class="fixed inset-0 z-[55] grid place-items-center bg-slate-950/90 p-4 backdrop-blur-sm">
+            <div @click.outside="referenceUploadModal = false" x-transition class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h3 class="text-lg font-semibold text-white" data-i18n="references.upload_title">Upload reference document</h3>
+                  <p class="mt-1 text-sm text-secondary" data-i18n="references.upload_help">PDF, images, text, CSV and Office documents up to 25 MB.</p>
+                </div>
+                <button @click="referenceUploadModal = false" class="rounded-lg p-2 text-muted hover:bg-slate-800 hover:text-white" aria-label="Close upload dialog">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
+              </div>
+              <form @submit.prevent="saveReferenceUpload()" class="mt-5 grid gap-4">
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_title">Title</span>
+                  <input x-model="referenceUploadForm.title" required class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_category">Category</span>
+                  <input x-model="referenceUploadForm.category" class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_tags">Tags</span>
+                  <input x-model="referenceUploadForm.tags" :placeholder="translated('references.placeholder_tags', 'comma, separated, tags')" class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/10">
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_description">Description</span>
+                  <textarea x-model="referenceUploadForm.description" rows="2" class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/10"></textarea>
+                </label>
+                <label>
+                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_file">File</span>
+                  <input @change="onReferenceFileSelect($event)" type="file" class="block w-full cursor-pointer rounded-lg border border-slate-700/80 bg-slate-950/70 text-sm text-slate-400 file:mr-4 file:border-0 file:bg-cyan-400/10 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-cyan-300">
+                  <span x-show="referenceFileError" class="mt-1.5 block text-xs text-rose-400" x-text="referenceFileError"></span>
+                  <span x-show="referenceUploadForm.file" class="mt-2 block text-xs text-cyan-300" x-text="referenceUploadForm.file ? referenceUploadForm.file.name : ''"></span>
+                </label>
+                <div class="flex justify-end gap-3 border-t border-slate-800 pt-5">
+                  <button type="button" @click="referenceUploadModal = false" class="btn--secondary" data-i18n="modal.cancel">Cancel</button>
+                  <button type="submit" :disabled="referenceUploading" class="btn--primary" x-text="referenceUploading ? translated('references.uploading', 'Uploading…') : translated('references.upload', 'Upload')"></button>
+                </div>
+              </form>
+            </div>
+          </div>
         </section>
 
         <section x-show="page === 'people'" x-cloak x-transition.opacity>
@@ -629,9 +829,9 @@
         <section x-show="page === 'monitoring'" x-cloak x-transition.opacity>
           <div class="action-bar">
             <div class="action-bar__text">
-              <p class="section-label text-cyan-300">NETWORK / TOPOLOGY ENGINE</p>
-              <h2 class="page-title">Reachability and latency topology</h2>
-              <p class="page-subtitle">Current monitored endpoints rendered as a control-node topology with an accessible table fallback and retained probe history.</p>
+              <p class="section-label text-cyan-300" data-i18n="monitoring.topology_overline">NETWORK / TOPOLOGY ENGINE</p>
+              <h2 class="page-title" data-i18n="monitoring.topology_title">Reachability and latency topology</h2>
+              <p class="page-subtitle" data-i18n="monitoring.topology_help">Current monitored endpoints rendered as a control-node topology with an accessible table fallback and retained probe history.</p>
             </div>
             <div class="action-bar__actions">
               <button @click="refreshMonitoring(true)" :disabled="monitoringLoading" class="btn--secondary" data-i18n="monitoring.refresh">Refresh</button>
@@ -639,19 +839,19 @@
             </div>
           </div>
 
-          <div x-show="monitoringError" role="alert" class="mb-3 rounded-md border border-rose-400/30 bg-rose-400/5 p-3 text-sm text-rose-300" x-text="monitoringError"></div>
+          <div x-show="monitoringError" role="alert" class="alert alert--error mb-3" x-text="monitoringError"></div>
 
           <section class="enterprise-panel mb-3 overflow-hidden" aria-labelledby="network-map-title">
             <div class="enterprise-panel__header">
               <div>
-                <h3 id="network-map-title" class="enterprise-panel__title">Interactive Reachability Map</h3>
-                <p class="mt-1 text-[10px] text-muted">SVG mode supports the current small topology; use Canvas with clustering above 100 nodes.</p>
+                <h3 id="network-map-title" class="enterprise-panel__title" data-i18n="monitoring.map_title">Interactive Reachability Map</h3>
+                <p class="mt-1 text-[10px] text-muted" data-i18n="monitoring.map_help">SVG mode supports the current small topology; use Canvas with clustering above 100 nodes.</p>
               </div>
-              <span class="status-chip" x-text="`${topologyNodes.length} RENDERED`"></span>
+              <span class="status-chip" x-text="`${topologyNodes.length} ${translated('monitoring.rendered', 'RENDERED')}`"></span>
             </div>
             <div class="topology-viewport">
               <svg viewBox="0 0 800 360" class="h-full min-h-[23rem] w-full" role="img"
-                   :aria-label="`${targets.length} monitored endpoints in the ForgeOS reachability map`">
+                   :aria-label="`${targets.length} ${translated('monitoring.map_aria', 'monitored endpoints in the ForgeOS reachability map')}`">
                 <g aria-hidden="true">
                   <template x-for="node in topologyNodes" :key="`map-edge-${node.id}`">
                     <line class="topology-edge" x1="400" y1="180" :x2="node.x" :y2="node.y"></line>
@@ -689,17 +889,38 @@
           </div>
 
           <form x-show="showTargetForm && isAdmin" @submit.prevent="saveTarget()" class="surface mb-6 grid gap-4 p-5 md:grid-cols-2" style="border-color: rgba(6,182,212,0.2);">
-            <input x-model="targetForm.name" required placeholder="Target name" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white outline-none focus:border-cyan-500/50">
-            <select x-model="targetForm.target_type" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white">
-              <option value="website">Website</option><option value="network">Network host</option>
-            </select>
-            <input x-model="targetForm.ip_or_host" required :placeholder="targetForm.target_type === 'website' ? 'https://example.com' : '192.168.1.1'" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white outline-none focus:border-cyan-500/50">
-            <input x-model.number="targetForm.ping_interval_sec" type="number" min="5" required placeholder="Interval seconds" class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-white outline-none focus:border-cyan-500/50">
-            <label x-show="targetForm.target_type === 'website'" class="flex items-center gap-2 text-sm text-slate-400"><input x-model="targetForm.allow_private_networks" type="checkbox"> <span data-i18n="monitoring.allow_private">Allow private/internal website address</span></label>
-            <label class="flex items-center gap-2 text-sm text-slate-400"><input x-model="targetForm.enabled" type="checkbox"> <span data-i18n="monitoring.enabled">Enabled</span></label>
+            <div class="field">
+              <label class="field__label" for="target-name" data-i18n="monitoring.target_name">Target name</label>
+              <input id="target-name" x-model="targetForm.name" required class="control" :placeholder="translated('monitoring.target_name_placeholder', 'Primary website or gateway')">
+            </div>
+            <div class="field">
+              <label class="field__label" for="target-type" data-i18n="monitoring.target_type">Target type</label>
+              <select id="target-type" x-model="targetForm.target_type" class="control">
+                <option value="website" x-text="translated('monitoring.website', 'Website')">Website</option>
+                <option value="network" x-text="translated('monitoring.network_host', 'Network host')">Network host</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label" for="target-address" data-i18n="monitoring.address">Address</label>
+              <input id="target-address" x-model="targetForm.ip_or_host" required class="control" :placeholder="targetForm.target_type === 'website' ? 'https://example.com' : '192.168.1.1'">
+              <p class="field__help" data-i18n="monitoring.address_help">Use an HTTP(S) URL or a DNS/IP host.</p>
+            </div>
+            <div class="field">
+              <label class="field__label" for="target-interval" data-i18n="monitoring.interval">Check interval</label>
+              <input id="target-interval" x-model.number="targetForm.ping_interval_sec" type="number" min="5" required class="control">
+              <p class="field__help" data-i18n="monitoring.interval_help">Minimum 5 seconds.</p>
+            </div>
+            <div x-show="targetForm.target_type === 'website'" class="field field--checkbox md:col-span-2">
+              <input id="target-private" x-model="targetForm.allow_private_networks" type="checkbox">
+              <label class="field__label" for="target-private" data-i18n="monitoring.allow_private">Allow private/internal website address</label>
+            </div>
+            <div class="field field--checkbox">
+              <input id="target-enabled" x-model="targetForm.enabled" type="checkbox">
+              <label class="field__label" for="target-enabled" data-i18n="monitoring.enabled">Enabled</label>
+            </div>
             <div class="flex justify-end gap-2 md:col-span-2">
-              <button type="button" @click="showTargetForm = false" class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancel</button>
-              <button :disabled="monitoringSaving" class="btn--primary" x-text="monitoringSaving ? 'Saving…' : 'Save Target'"></button>
+              <button type="button" @click="showTargetForm = false" class="btn--secondary" data-i18n="monitoring.cancel">Cancel</button>
+              <button :disabled="monitoringSaving" class="btn--primary" x-text="monitoringSaving ? translated('monitoring.saving', 'Saving…') : translated('monitoring.save', 'Save Target')"></button>
             </div>
           </form>
 
@@ -707,10 +928,10 @@
             <div class="table-shell__header p-4">
               <label class="relative block max-w-md">
                 <svg class="absolute left-3 top-3 h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                <input x-model="targetSearch" type="search" placeholder="Search targets by name or address..." class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-secondary focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10">
+                <input x-model="targetSearch" type="search" :placeholder="translated('monitoring.search_placeholder', 'Search targets by name or address…')" class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-secondary focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10">
               </label>
             </div>
-            <div x-show="monitoringLoading" class="p-4">
+            <div x-show="monitoringLoading" class="loading-state p-4">
               <div class="flex items-center gap-4 border-b border-slate-800/60 px-5 py-3">
                 <div class="h-4 w-32 animate-pulse rounded bg-slate-800"></div>
                 <div class="h-4 w-40 animate-pulse rounded bg-slate-800"></div>
@@ -732,17 +953,17 @@
                 </div>
               </template>
             </div>
-            <div class="overflow-x-auto">
+            <div class="table-scroll">
               <table class="w-full text-left text-sm">
                 <thead class="border-b border-slate-800/80 bg-slate-950/30 text-xs uppercase tracking-wider text-muted">
                   <tr>
-                    <th class="px-5 py-4">Name</th>
-                    <th class="px-5 py-4">Target</th>
-                    <th class="px-5 py-4">Type</th>
-                    <th class="px-5 py-4">Status</th>
-                    <th class="px-5 py-4 text-right">Latency</th>
-                    <th class="px-5 py-4">Last Check</th>
-                    <th class="px-5 py-4">Actions</th>
+                    <th class="px-5 py-4" data-i18n="monitoring.column_name">Name</th>
+                    <th class="px-5 py-4" data-i18n="monitoring.column_target">Target</th>
+                    <th class="px-5 py-4" data-i18n="monitoring.column_type">Type</th>
+                    <th class="px-5 py-4" data-i18n="monitoring.column_status">Status</th>
+                    <th class="px-5 py-4 text-end" data-i18n="monitoring.column_latency">Latency</th>
+                    <th class="px-5 py-4" data-i18n="monitoring.column_last_check">Last Check</th>
+                    <th class="px-5 py-4" data-i18n="monitoring.column_actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
@@ -753,7 +974,7 @@
                         <p x-show="target.last_error" class="mt-1 truncate text-xs text-rose-300" x-text="target.last_error"></p>
                       </td>
                       <td class="px-5 py-4">
-                        <p class="truncate font-mono text-xs text-slate-300" x-text="target.ip_or_host"></p>
+                        <p class="technical-value truncate text-xs text-slate-300" x-text="target.ip_or_host"></p>
                       </td>
                       <td class="px-5 py-4 text-xs capitalize text-slate-400" x-text="target.target_type"></td>
                       <td class="px-5 py-4">
@@ -762,10 +983,10 @@
                           <span x-text="target.status"></span>
                         </span>
                       </td>
-                      <td class="px-5 py-4 text-right font-mono text-xs" :class="target.last_latency_ms != null ? 'text-slate-300' : 'text-secondary'" x-text="target.last_latency_ms != null ? `${target.last_latency_ms.toFixed(1)} ms` : '—'"></td>
-                      <td class="px-5 py-4 text-xs text-slate-400" x-text="target.last_checked_at ? relativeTime(target.last_checked_at) : 'Never'"></td>
+                      <td class="technical-value px-5 py-4 text-end text-xs" :class="target.last_latency_ms != null ? 'text-slate-300' : 'text-secondary'" x-text="target.last_latency_ms != null ? `${formatNumber(target.last_latency_ms, { maximumFractionDigits: 1 })} ms` : '—'"></td>
+                      <td class="px-5 py-4 text-xs text-slate-400" x-text="target.last_checked_at ? relativeTime(target.last_checked_at) : translated('monitoring.never', 'Never')"></td>
                       <td class="px-5 py-4">
-                        <div class="flex items-center gap-2">
+                        <div class="table-actions">
                           <button x-show="isAdmin" @click="checkTarget(target.id)" class="rounded-lg bg-cyan-400/10 px-2.5 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20" title="Check now" data-i18n="monitoring.check">Check now</button>
                           <button @click="loadTargetLogs(target)" class="rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700" title="History" data-i18n="monitoring.history">History</button>
                           <button x-show="isAdmin" @click="editTarget(target)" class="rounded-lg bg-amber-400/10 px-2.5 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-400/20" title="Edit" data-i18n="monitoring.edit">Edit</button>
@@ -780,16 +1001,16 @@
                 <div class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-800 text-secondary">
                   <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 18V6m5 12V9m5 9V4m5 14v-7"/></svg>
                 </div>
-                <p class="mt-4 font-medium text-slate-300" x-text="targetSearch ? 'No matching targets' : 'No monitoring targets configured'"></p>
-                <p class="mt-1 text-sm text-secondary" x-text="targetSearch ? 'Try another search term.' : 'An administrator can add a website or network host.'"></p>
-                <button x-show="isAdmin && !targetSearch" @click="openTargetForm()" class="btn--primary mt-4">Add Target</button>
+                <p class="mt-4 font-medium text-slate-300" x-text="targetSearch ? translated('monitoring.filtered_empty', 'No matching targets') : translated('monitoring.empty', 'No monitoring targets configured')"></p>
+                <p class="mt-1 text-sm text-secondary" x-text="targetSearch ? translated('monitoring.filtered_empty_help', 'Try another search term.') : translated('monitoring.empty_help', 'An administrator can add a website or network host.')"></p>
+                <button x-show="isAdmin && !targetSearch" @click="openTargetForm()" class="btn--primary mt-4" data-i18n="monitoring.add">Add Target</button>
               </div>
             </div>
           </div>
 
           <div x-show="selectedTarget" class="surface mt-6 p-5">
             <h3 class="font-semibold text-white"><span x-text="selectedTarget?.name"></span> · <span data-i18n="monitoring.history">History</span></h3>
-            <p x-show="selectedLogsLoading" class="mt-4 text-sm text-secondary">Loading history…</p>
+            <p x-show="selectedLogsLoading" class="mt-4 text-sm text-secondary" data-i18n="monitoring.history_loading">Loading history…</p>
             <p x-show="selectedLogsError" class="mt-4 text-sm text-rose-300" x-text="selectedLogsError"></p>
             <p x-show="!selectedLogsLoading && !selectedLogsError && !selectedTargetLogs.length" class="mt-4 text-sm text-secondary" data-i18n="monitoring.no_history">No checks have been recorded for this target.</p>
             <div x-show="selectedTargetLogs.length" class="mt-4 space-y-2 text-xs">
@@ -799,8 +1020,8 @@
                     <span class="h-1.5 w-1.5 rounded-full" :class="monitoringDotClass(event.status)"></span>
                     <span x-text="event.status"></span>
                   </span>
-                  <span class="text-secondary" x-text="new Date(event.timestamp).toLocaleString()"></span>
-                  <span class="text-slate-400" x-text="event.message || (event.latency_ms != null ? `${event.latency_ms.toFixed(1)} ms` : 'Completed')"></span>
+                  <span class="text-secondary" x-text="formatDateTime(event.timestamp)"></span>
+                  <span class="text-slate-400" x-text="event.message || (event.latency_ms != null ? `${formatNumber(event.latency_ms, { maximumFractionDigits: 1 })} ms` : translated('monitoring.completed', 'Completed'))"></span>
                 </div>
               </template>
             </div>
@@ -817,7 +1038,7 @@
                     <span x-text="event.status"></span>
                   </span>
                   <span class="min-w-0 flex-1 truncate text-slate-300" x-text="targetName(event.target_id)"></span>
-                  <span class="shrink-0 text-secondary" x-text="new Date(event.timestamp).toLocaleString()"></span>
+                  <span class="shrink-0 text-secondary" x-text="formatDateTime(event.timestamp)"></span>
                 </div>
               </template>
             </div>
@@ -1345,6 +1566,7 @@
   </div>
 
   <script src="/static/js/api.js"></script>
+  <script src="/static/js/formatters.js"></script>
   <script src="/static/js/i18n.js"></script>
   <script>
     function forgeApp() {
@@ -1444,7 +1666,10 @@
         currentUser: null, loginForm: { username: "", password: "" },
         language: localStorage.getItem("forgeos-language") || "en", dictionary: {},
         dragging: false, selectedFile: null, uploading: false, uploadProgress: 0, importResult: null,
-        assetSearch: "", userSearch: "", warehouseSearch: "", referenceSearch: "", assets: [], people: [], users: [], targets: [], warehouseItems: [], references: [], monitoringHistory: [], selectedTarget: null, selectedTargetLogs: [], toasts: [], lastUpdated: "just now",
+        assetSearch: "", userSearch: "", warehouseSearch: "", referenceSearch: "", assets: [], people: [], users: [], targets: [], warehouseItems: [], warehouseLoading: false, references: [], referencesLoading: false, monitoringHistory: [], selectedTarget: null, selectedTargetLogs: [], toasts: [], lastUpdated: "just now",
+        warehouseItemModal: false, editingWarehouseItemId: null, warehouseSaving: false, warehouseItemForm: { sku: "", name: "", category: "Other", unit: "piece", minimum_stock: 0, storage_location: "", bin_code: "", condition: "", vendor: "", serial_number: "", batch_number: "", notes: "" },
+        movementModal: false, movementSaving: false, movementItem: null, movementForm: { movement_type: "incoming", quantity: 1, reference: "", notes: "" },
+        referenceUploadModal: false, referenceUploading: false, referenceFileError: "", referenceUploadForm: { title: "", category: "Other", tags: "", description: "", file: null },
         selectedAssetIds: [], assetSorts: [{ key: "asset_tag", direction: "asc" }],
         selectedAiAssetId: "", agentPrompt: "", aiInsight: null, aiLoading: false,
         monitoringLoading: false, monitoringSaving: false, monitoringError: "", selectedLogsLoading: false, selectedLogsError: "", showTargetForm: false, monitoringTimer: null,
@@ -1581,14 +1806,15 @@ navigation: [
           const warnings = this.targets.filter(item => item.status === "WARNING").length;
           const issues = failed + warnings;
           const latencies = this.targets.map(item => item.last_latency_ms).filter((value) => value != null);
-          const avgLatency = latencies.length ? (latencies.reduce((a, b) => a + b, 0) / latencies.length).toFixed(0) : null;
+          const avgLatency = latencies.length ? (latencies.reduce((a, b) => a + b, 0) / latencies.length) : null;
           const checks = this.targets.map(item => item.last_checked_at).filter(Boolean);
-          const lastCheck = checks.length ? new Date(Math.max(...checks.map((value) => new Date(value).getTime()))).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Never";
+          const lastCheck = checks.length ? this.formatDateTime(new Date(Math.max(...checks.map((value) => new Date(value).getTime()))), { hour: "2-digit", minute: "2-digit" }) : this.translated("monitoring.never", "Never");
+          const fill = (template, values) => Object.entries(values).reduce((text, [key, value]) => text.replace(`{${key}}`, value), template);
           return [
-            { label: "Online", value: total ? `${passing}/${total}` : "—", caption: passing === total && total ? "All targets healthy" : "Passing checks", dot: "bg-emerald-400 shadow-[0_0_10px_#10b981]" },
-            { label: "Avg Latency", value: avgLatency != null ? `${avgLatency} ms` : "—", caption: latencies.length ? `${latencies.length} measured` : "No measurements yet", dot: "bg-cyan-400 shadow-[0_0_10px_#06b6d4]" },
-            { label: "Issues", value: issues, caption: `${failed} failed, ${warnings} warnings`, dot: issues ? "bg-amber-400 shadow-[0_0_10px_#f59e0b]" : "bg-slate-600" },
-            { label: "Last Check", value: lastCheck, caption: "Most recent probe", dot: "bg-slate-400" },
+            { label: this.translated("monitoring.summary_online", "Online"), value: total ? `${passing}/${total}` : "—", caption: passing === total && total ? this.translated("monitoring.summary_online_all", "All targets healthy") : this.translated("monitoring.summary_online_partial", "Passing checks"), dot: "bg-emerald-400 shadow-[0_0_10px_#10b981]" },
+            { label: this.translated("monitoring.summary_latency", "Avg Latency"), value: avgLatency != null ? `${this.formatNumber(avgLatency, { maximumFractionDigits: 0 })} ms` : "—", caption: latencies.length ? fill(this.translated("monitoring.summary_measured", "{count} measured"), { count: latencies.length }) : this.translated("monitoring.summary_no_measurements", "No measurements yet"), dot: "bg-cyan-400 shadow-[0_0_10px_#06b6d4]" },
+            { label: this.translated("monitoring.summary_issues", "Issues"), value: issues, caption: fill(this.translated("monitoring.summary_issue_counts", "{failed} failed, {warnings} warnings"), { failed, warnings }), dot: issues ? "bg-amber-400 shadow-[0_0_10px_#f59e0b]" : "bg-slate-600" },
+            { label: this.translated("monitoring.summary_last_check", "Last Check"), value: lastCheck, caption: this.translated("monitoring.summary_recent_probe", "Most recent probe"), dot: "bg-slate-400" },
           ];
         },
         get filteredTargets() {
@@ -1636,6 +1862,26 @@ navigation: [
           return this.translated(item?.labelKey, item?.label || "ForgeOS");
         },
         translated(key, fallback) { return this.dictionary[key] || fallback; },
+        formatDate(value, options = {}) {
+          if (!window.forgeFormatters) return value ? new Date(value).toLocaleDateString() : "";
+          return window.forgeFormatters.formatDate(value, this.language, options);
+        },
+        formatDateTime(value, options = {}) {
+          if (!window.forgeFormatters) return value ? new Date(value).toLocaleString() : "";
+          return window.forgeFormatters.formatDateTime(value, this.language, options);
+        },
+        formatNumber(value, options = {}) {
+          if (!window.forgeFormatters) return value != null ? String(value) : "";
+          return window.forgeFormatters.formatNumber(value, this.language, options);
+        },
+        formatBytes(value, options = {}) {
+          if (!window.forgeFormatters) return value != null ? String(value) : "";
+          return window.forgeFormatters.formatBytes(value, this.language, options);
+        },
+        formatDuration(value, options = {}) {
+          if (!window.forgeFormatters) return value != null ? String(value) : "";
+          return window.forgeFormatters.formatDuration(value, this.language, options);
+        },
         async setLanguage(language) {
           if (window.forgeI18n) await window.forgeI18n.setLanguage(language);
         },
@@ -1683,7 +1929,7 @@ navigation: [
               x: 400 + Math.cos(angle) * 285,
               y: 180 + Math.sin(angle) * 125,
               shortName: (target.name || `N${target.id}`).replace(/[^A-Za-z0-9]/g, "").slice(0, 7).toUpperCase(),
-              latency: target.last_latency_ms != null ? `${target.last_latency_ms.toFixed(0)}ms` : "n/a",
+              latency: target.last_latency_ms != null ? `${this.formatNumber(target.last_latency_ms, { maximumFractionDigits: 0 })}ms` : "n/a",
             };
           });
         },
@@ -1852,11 +2098,134 @@ navigation: [
         },
         async loadSummary() { try { this.summary = await this.api("/api/v1/dashboard/summary"); this.lastUpdated = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch (error) { this.toast(error.message, "error"); } },
         async loadAssets() { try { this.assets = await this.api("/api/v1/assets"); } catch (error) { this.toast(error.message, "error"); } },
-        async loadWarehouse() { try { this.warehouseItems = await this.api("/api/v1/warehouse/items"); } catch (error) { this.toast(error.message, "error"); } },
-        async loadReferences() { try { this.references = await this.api("/api/v1/references"); } catch (error) { this.toast(error.message, "error"); } },
-        async openReference(document, preview = false) {
+async loadWarehouse(showToast = false) {
+          this.warehouseLoading = true;
+          try {
+            this.warehouseItems = await this.api("/api/v1/warehouse/items");
+            if (showToast) this.toast(this.translated("warehouse.refreshed", "Warehouse refreshed"));
+          } catch (error) { this.toast(error.message, "error"); }
+          finally { this.warehouseLoading = false; }
+        },
+        async loadReferences(showToast = false) {
+          this.referencesLoading = true;
+          try {
+            this.references = await this.api("/api/v1/references");
+            if (showToast) this.toast(this.translated("references.refreshed", "Reference archive refreshed"));
+          } catch (error) { this.toast(error.message, "error"); }
+          finally { this.referencesLoading = false; }
+        },
+        stockLabel(item) {
+          const quantity = this.formatNumber(item.quantity);
+          const suffix = item.low_stock ? ` · ${this.translated("warehouse.low_stock", "LOW")}` : "";
+          return `${quantity} ${item.unit}${suffix}`;
+        },
+async openReference(document, preview = false) {
           try { await window.forgeApi.download(`/api/v1/references/${document.id}/download?preview=${preview}`, document.original_filename); }
           catch (error) { this.toast(error.message, "error"); }
+        },
+        openWarehouseItemForm(warehouseItem = null) {
+          this.editingWarehouseItemId = warehouseItem ? warehouseItem.id : null;
+          this.warehouseItemForm = warehouseItem
+            ? {
+                sku: warehouseItem.sku || "",
+                name: warehouseItem.name || "",
+                category: warehouseItem.category || "Other",
+                unit: warehouseItem.unit || "piece",
+                minimum_stock: warehouseItem.minimum_stock || 0,
+                storage_location: warehouseItem.storage_location || "",
+                bin_code: warehouseItem.bin_code || "",
+                condition: warehouseItem.condition || "",
+                vendor: warehouseItem.vendor || "",
+                serial_number: warehouseItem.serial_number || "",
+                batch_number: warehouseItem.batch_number || "",
+                notes: warehouseItem.notes || "",
+              }
+            : { sku: "", name: "", category: "Other", unit: "piece", minimum_stock: 0, storage_location: "", bin_code: "", condition: "", vendor: "", serial_number: "", batch_number: "", notes: "" };
+          this.warehouseItemModal = true;
+        },
+        async saveWarehouseItem() {
+          if (!this.warehouseItemForm.sku || !this.warehouseItemForm.name) { this.toast(this.translated("warehouse.error_required", "SKU and item name are required."), "error"); return; }
+          const editing = Boolean(this.editingWarehouseItemId);
+          const payload = this.warehouseItemForm;
+          this.warehouseSaving = true;
+          try {
+            if (editing) {
+              const clean = { ...payload };
+              delete clean.sku;
+              await this.api(`/api/v1/warehouse/items/${this.editingWarehouseItemId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clean) });
+            } else {
+              await this.api("/api/v1/warehouse/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            }
+            this.warehouseItemModal = false;
+            await this.loadWarehouse();
+            this.toast(editing ? this.translated("warehouse.item_updated", "Warehouse item updated") : this.translated("warehouse.item_added", "Warehouse item added"));
+          } catch (error) { this.toast(error.message, "error"); }
+          finally { this.warehouseSaving = false; }
+        },
+        isPositiveInt(value) { return Number.isInteger(Number(value)) && Number(value) > 0; },
+        openMovementForm(warehouseItem) {
+          this.movementItem = warehouseItem;
+          this.movementForm = { movement_type: "incoming", quantity: 1, reference: "", notes: "" };
+          this.movementModal = true;
+        },
+        async saveMovement() {
+          if (!this.isPositiveInt(this.movementForm.quantity)) {
+            this.toast(this.translated("warehouse.error_quantity", "Enter a positive whole number for quantity."), "error"); return;
+          }
+          const payload = {
+            movement_type: this.movementForm.movement_type,
+            quantity: Number(this.movementForm.quantity),
+            reference: this.movementForm.reference || undefined,
+            notes: this.movementForm.notes || undefined,
+          };
+          this.movementSaving = true;
+          try {
+            await this.api(`/api/v1/warehouse/items/${this.movementItem.id}/movements`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            this.movementModal = false;
+            await this.loadWarehouse();
+            this.toast(this.translated("warehouse.movement_recorded", "Movement recorded"));
+          } catch (error) { this.toast(error.message, "error"); }
+          finally { this.movementSaving = false; }
+        },
+        openReferenceUpload() {
+          this.referenceUploadForm = { title: "", category: "Other", tags: "", description: "", file: null };
+          this.referenceFileError = "";
+          this.referenceUploadModal = true;
+        },
+        onReferenceFileSelect(event) {
+          let file = event.target.files[0] || null;
+          this.referenceFileError = "";
+          const maxBytes = 25 * 1024 * 1024;
+          const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".txt", ".md", ".csv", ".doc", ".docx", ".xls", ".xlsx"];
+          if (file && file.size > maxBytes) {
+            this.referenceFileError = this.translated("references.error_size", "File exceeds the 25 MB upload limit.");
+            file = null;
+          } else if (file) {
+            const extension = file.name ? "." + file.name.split(".").pop().toLowerCase() : "";
+            if (!allowedExtensions.includes(extension)) {
+              this.referenceFileError = this.translated("references.error_type", "Unsupported file type.");
+              file = null;
+            }
+          }
+          this.referenceUploadForm.file = file;
+        },
+        async saveReferenceUpload() {
+          if (!this.referenceUploadForm.title) { this.toast(this.translated("references.error_title", "Title is required."), "error"); return; }
+          if (!this.referenceUploadForm.file) { this.toast(this.translated("references.error_file", "Choose a file to upload."), "error"); return; }
+          const formData = new FormData();
+          formData.append("title", this.referenceUploadForm.title);
+          formData.append("category", this.referenceUploadForm.category || "Other");
+          formData.append("tags", this.referenceUploadForm.tags);
+          formData.append("description", this.referenceUploadForm.description);
+          formData.append("file", this.referenceUploadForm.file);
+          this.referenceUploading = true;
+          try {
+            await this.api("/api/v1/references", { method: "POST", body: formData });
+            this.referenceUploadModal = false;
+            await this.loadReferences();
+            this.toast(this.translated("references.uploaded", "Reference document uploaded"));
+          } catch (error) { this.toast(error.message, "error"); }
+          finally { this.referenceUploading = false; }
         },
         async loadPeople() { try { this.people = await this.api("/api/v1/people"); } catch (error) { this.toast(error.message, "error"); } },
          async loadUsers() { if (this.isAdmin) try { this.users = await this.api("/api/v1/users"); } catch (error) { this.toast(error.message, "error"); } },
@@ -1913,19 +2282,19 @@ navigation: [
           try {
             await this.api(path, { method: editing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
             this.showTargetForm = false; await this.refreshMonitoring(false);
-            this.toast(editing ? "Target updated" : "Target added");
+            this.toast(editing ? this.translated("monitoring.updated", "Target updated") : this.translated("monitoring.added", "Target added"));
           } catch (error) { this.toast(error.message, "error"); }
           finally { this.monitoringSaving = false; }
         },
         async deleteTarget(target) {
-          if (!window.confirm(`Delete monitoring target "${target.name}"?`)) return;
+          if (!window.confirm(this.translated("monitoring.delete_confirm", "Delete monitoring target “{name}”?").replace("{name}", target.name))) return;
           try {
             await this.api(`/api/v1/monitoring/targets/${target.id}`, { method: "DELETE" });
             if (this.selectedTarget?.id === target.id) { this.selectedTarget = null; this.selectedTargetLogs = []; }
-            await this.refreshMonitoring(false); this.toast("Target deleted");
+            await this.refreshMonitoring(false); this.toast(this.translated("monitoring.deleted", "Target deleted"));
           } catch (error) { this.toast(error.message, "error"); }
         },
-        targetName(targetId) { return this.targets.find(item => item.id === targetId)?.name || `Target #${targetId}`; },
+        targetName(targetId) { return this.targets.find(item => item.id === targetId)?.name || this.translated("monitoring.target_fallback", "Target #{id}").replace("{id}", targetId); },
         openNewAsset() {
           this.editingAssetId = null;
           this.invoiceFile = null;
@@ -2429,7 +2798,12 @@ navigation: [
         monitoringStatusClass(status) { return ({ PASS: "bg-emerald-400/10 text-emerald-300", WARNING: "bg-amber-400/10 text-amber-300", FAILED: "bg-rose-400/10 text-rose-300", UNKNOWN: "bg-slate-700 text-slate-300" })[status] || "bg-slate-700 text-slate-300"; },
         monitoringDotClass(status) { return ({ PASS: "bg-emerald-400", WARNING: "bg-amber-400", FAILED: "bg-rose-400", UNKNOWN: "bg-slate-500" })[status] || "bg-slate-500"; },
         initials(name) { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(); },
-        relativeTime(value) { const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000); return days <= 0 ? "Today" : days === 1 ? "1d ago" : `${days}d ago`; },
+        relativeTime(value) {
+          const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000);
+          if (days <= 0) return this.translated("common.today", "Today");
+          if (days === 1) return this.translated("common.yesterday", "Yesterday");
+          return this.translated("common.days_ago", "{count}d ago").replace("{count}", days);
+        },
         toast(message, type = "success") {
           if (this.toasts.some(item => item.message === message && item.type === type)) return;
           const id = Date.now() + Math.random(); this.toasts.push({ id, message, type }); setTimeout(() => { this.toasts = this.toasts.filter(item => item.id !== id); }, 4500);
