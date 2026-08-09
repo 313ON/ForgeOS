@@ -1,7 +1,11 @@
 import pytest
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.pool import StaticPool
-from Backend.app.db.migrations import _make_asset_status_nullable, _repair_dangling_network_logs_fk
+from Backend.app.db.migrations import (
+    _make_asset_status_nullable,
+    _repair_dangling_network_logs_fk,
+    migrate_phase_6_topology,
+)
 
 def test_repair_dangling_network_logs_fk():
     engine = create_engine("sqlite:///:memory:", poolclass=StaticPool)
@@ -97,6 +101,44 @@ def test_make_asset_status_nullable():
 
     # Idempotency
     assert _make_asset_status_nullable(engine) == []
+
+
+def test_migrate_phase_6_topology_creates_table_and_column():
+    engine = create_engine("sqlite:///:memory:", poolclass=StaticPool)
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            """
+            CREATE TABLE assets (
+                id INTEGER PRIMARY KEY,
+                asset_tag VARCHAR(100),
+                type VARCHAR(100),
+                status VARCHAR(50),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+    res = migrate_phase_6_topology(engine)
+    assert res == ["network_links", "assets.is_internet_source"]
+
+    inspector = inspect(engine)
+    assert "network_links" in inspector.get_table_names()
+    link_cols = {column["name"] for column in inspector.get_columns("network_links")}
+    assert {"id", "source_id", "target_id", "link_type", "label", "created_at", "deleted_at"} <= link_cols
+    asset_cols = {column["name"] for column in inspector.get_columns("assets")}
+    assert "is_internet_source" in asset_cols
+
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "INSERT INTO network_links (source_id, target_id, link_type) VALUES (1, 2, 'wireless')"
+        )
+        conn.exec_driver_sql("INSERT INTO assets (id, is_internet_source) VALUES (1, 1)")
+
+    with engine.connect() as conn:
+        rows = conn.exec_driver_sql("SELECT source_id, target_id, link_type FROM network_links").fetchall()
+        assert rows == [(1, 2, "wireless")]
+
+    assert migrate_phase_6_topology(engine) == []
 
 
 def test_make_asset_status_nullable_skips_when_already_nullable():

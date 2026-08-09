@@ -22,6 +22,7 @@
   /* Layering */
   --z-header: 30;
   --z-sidebar: 40;
+  --z-dropdown: 42;
   --z-modal: 50;
   --z-toast: 60;
   --z-command: 70;

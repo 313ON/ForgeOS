@@ -142,6 +142,7 @@ class AssetRead(ORMModel, AssetBase):
     created_at: datetime
     updated_at: datetime
     custodian: PersonSummary | None = None
+    is_internet_source: bool = False
 
 
 class LoginRequest(BaseModel):
@@ -453,3 +454,42 @@ class ReferenceDocumentRead(ORMModel):
     uploaded_by_username: str
     created_at: datetime
     preview_supported: bool = False
+
+
+class TopologyAsset(ORMModel):
+    """Compact asset record embedded in the topology response."""
+
+    id: int
+    asset_tag: str | None = None
+    type: str | None = None
+    asset_name: str | None = None
+    hostname: str | None = None
+    ip_address: str | None = None
+    is_internet_source: bool = False
+    status: str | None = None
+
+
+class NetworkLinkRead(ORMModel):
+    id: int
+    source_id: int
+    target_id: int
+    link_type: str
+    label: str | None = None
+
+
+class NetworkLinkCreate(BaseModel):
+    source_id: int
+    target_id: int
+    link_type: Literal["ethernet", "wireless"] = "ethernet"
+    label: str | None = Field(default=None, max_length=200)
+
+
+class InternetSourceUpdate(BaseModel):
+    is_internet_source: bool
+
+
+class TopologyOut(BaseModel):
+    """Flat adjacency-list topology response."""
+
+    assets: list[TopologyAsset]
+    links: list[NetworkLinkRead]

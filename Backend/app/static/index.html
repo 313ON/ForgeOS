@@ -155,7 +155,7 @@
             </div>
           </div>
 
-          <div x-show="loading" class="metric-grid" aria-label="Loading telemetry">
+          <div x-show="dashboardLoading" x-cloak class="metric-grid" aria-label="Loading telemetry">
             <template x-for="index in 4" :key="index">
               <div class="metric-card animate-pulse motion-reduce:animate-none">
                 <div class="h-3 w-24 rounded bg-[#2E3440]"></div>
@@ -164,7 +164,7 @@
             </template>
           </div>
 
-          <div x-show="!loading" class="metric-grid">
+          <div x-show="!dashboardLoading" class="metric-grid">
             <template x-for="metric in nocMetrics" :key="metric.label">
               <button type="button" @click="navigate(metric.page)" class="metric-card text-left hover:border-cyan-300">
                 <div class="flex items-center justify-between gap-2">
@@ -186,31 +186,18 @@
                 </div>
                 <button type="button" @click="navigate('monitoring')" class="btn--secondary">Open topology</button>
               </div>
-              <div class="topology-viewport">
-                <svg viewBox="0 0 800 360" class="h-full min-h-[23rem] w-full" role="img"
-                     :aria-label="`${targets.length} monitored targets connected to the ForgeOS control node`">
-                  <g aria-hidden="true">
-                    <template x-for="node in topologyNodes" :key="`edge-${node.id}`">
-                      <line class="topology-edge" x1="400" y1="180" :x2="node.x" :y2="node.y"></line>
-                    </template>
-                  </g>
-                  <g class="topology-node topology-node--pass" tabindex="0" aria-label="ForgeOS local control node">
-                    <circle cx="400" cy="180" r="34"></circle>
-                    <text x="400" y="176" text-anchor="middle">FORGEOS</text>
-                    <text x="400" y="192" text-anchor="middle">CONTROL</text>
-                  </g>
-                  <template x-for="node in topologyNodes" :key="node.id">
-                    <g class="topology-node" :class="topologyNodeClass(node.status)" tabindex="0"
-                       @click="openTopologyTarget(node)" @keydown.enter.prevent="openTopologyTarget(node)"
-                       :aria-label="`${node.name}, ${node.status}, ${node.latency}`">
-                      <circle :cx="node.x" :cy="node.y" r="24"></circle>
-                      <text :x="node.x" :y="node.y + 4" text-anchor="middle" x-text="node.shortName"></text>
-                      <text :x="node.x" :y="node.y + 42" text-anchor="middle" x-text="node.latency"></text>
-                    </g>
-                  </template>
-                  <text x="400" y="330" text-anchor="middle" fill="#697386" font-family="JetBrains Mono" font-size="10"
-                        x-show="!topologyNodes.length">NO MONITORED TARGETS CONFIGURED</text>
-                </svg>
+              <div class="topology-viewport" @click="onReachabilityMapClick($event)" @keydown.enter.prevent="onReachabilityMapClick($event)">
+                <div x-show="topologyLoading" x-cloak class="grid h-full min-h-[23rem] w-full place-items-center" aria-label="Loading monitoring topology">
+                  <div class="space-y-3 text-center">
+                    <div class="mx-auto grid h-12 w-12 animate-pulse place-items-center rounded-full border border-[#3B4252] bg-[#232730] motion-reduce:animate-none">
+                      <div class="h-6 w-6 animate-pulse rounded-full bg-[#2E3440] motion-reduce:animate-none"></div>
+                    </div>
+                    <div class="mx-auto h-3 w-40 animate-pulse rounded bg-[#2E3440] motion-reduce:animate-none"></div>
+                  </div>
+                </div>
+                <svg x-show="!topologyLoading" viewBox="0 0 800 360" class="h-full min-h-[23rem] w-full" role="img"
+                     :aria-label="`${targets.length} monitored targets connected to the ForgeOS control node`"
+                     x-html="monitoringMapSvg"></svg>
               </div>
               <div class="border-t border-[#2E3440] p-3">
                 <div class="flex flex-wrap gap-3 telemetry-text text-[9px] text-muted">
@@ -429,7 +416,7 @@
                 <input x-model="warehouseSearch" type="search" :placeholder="translated('warehouse.search_placeholder', 'Search SKU, name, serial…')" :aria-label="translated('warehouse.search', 'Search warehouse items')" class="control">
               </label>
             </div>
-            <div x-show="warehouseLoading" class="loading-state p-6 text-sm" data-i18n="warehouse.loading">Loading warehouse items…</div>
+            <div x-show="warehouseLoading" x-cloak class="loading-state p-6 text-sm" data-i18n="warehouse.loading">Loading warehouse items…</div>
             <div class="table-scroll">
               <table class="w-full text-sm">
                 <thead class="border-b border-slate-800/80 bg-slate-950/30 text-xs uppercase tracking-wider text-muted">
@@ -608,7 +595,7 @@
               <input x-model="referenceSearch" type="search" :placeholder="translated('references.search_placeholder', 'Search titles, tags, categories…')" :aria-label="translated('references.search', 'Search reference documents')" class="control">
             </label>
           </div>
-          <div x-show="referencesLoading" class="loading-state surface mb-3 p-6 text-center text-sm" data-i18n="references.loading">Loading reference documents…</div>
+          <div x-show="referencesLoading" x-cloak class="loading-state surface mb-3 p-6 text-center text-sm" data-i18n="references.loading">Loading reference documents…</div>
           <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <template x-for="document in filteredReferences" :key="document.id">
               <article class="enterprise-panel p-4">
@@ -626,6 +613,7 @@
                 <div class="mt-4 flex gap-2">
                   <button x-show="document.preview_supported" type="button" @click="openReference(document, true)" class="btn--secondary" data-i18n="references.preview">Preview</button>
                   <button type="button" @click="openReference(document, false)" class="btn--primary" data-i18n="references.download">Download</button>
+                  <button x-show="isAdmin" type="button" @click="deleteReference(document)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-400/20" data-i18n="references.delete">Delete</button>
                 </div>
               </article>
             </template>
@@ -849,29 +837,123 @@
               </div>
               <span class="status-chip" x-text="`${topologyNodes.length} ${translated('monitoring.rendered', 'RENDERED')}`"></span>
             </div>
-            <div class="topology-viewport">
+            <div class="topology-viewport" @click="onReachabilityMapClick($event)" @keydown.enter.prevent="onReachabilityMapClick($event)">
               <svg viewBox="0 0 800 360" class="h-full min-h-[23rem] w-full" role="img"
-                   :aria-label="`${targets.length} ${translated('monitoring.map_aria', 'monitored endpoints in the ForgeOS reachability map')}`">
-                <g aria-hidden="true">
-                  <template x-for="node in topologyNodes" :key="`map-edge-${node.id}`">
-                    <line class="topology-edge" x1="400" y1="180" :x2="node.x" :y2="node.y"></line>
+                   :aria-label="`${targets.length} ${translated('monitoring.map_aria', 'monitored endpoints in the ForgeOS reachability map')}`"
+                   x-html="monitoringMapSvg"></svg>
+              <svg class="hidden" aria-hidden="true"><defs><line class="topology-edge" x1="0" y1="0" x2="0" y2="0"></line><g class="topology-node"></g></defs></svg>
+            </div>
+          </section>
+
+          <section class="enterprise-panel mb-3 overflow-hidden" aria-labelledby="topology-title">
+            <div class="enterprise-panel__header">
+              <div>
+                <h3 id="topology-title" class="enterprise-panel__title" data-i18n="topology.title">Asset Network Topology</h3>
+                <p class="mt-1 text-[10px] text-muted" data-i18n="topology.help">Assets and their physical network links drawn from the internet source inward.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="status-chip" x-show="!topologyLoading" x-text="`${topologyLayout.nodes.length} ${translated('topology.nodes', 'NODES')} · ${topologyLayout.edges.length} ${translated('topology.links', 'LINKS')}`"></span>
+                <button @click="loadTopology(true)" :disabled="topologyLoading" class="btn--secondary" data-i18n="topology.refresh">Refresh</button>
+                <button x-show="isAdmin" @click="openTopologyLinkForm()" class="btn--primary" data-i18n="topology.add_link">Add Link</button>
+              </div>
+            </div>
+
+            <div x-show="topologyError" role="alert" class="alert alert--error mb-3" x-text="topologyError"></div>
+
+            <div class="topology-viewport" x-show="!topologyLoading && topologyLayout.nodes.length"
+                 @click="onTopologyMapClick($event)" @keydown.enter.prevent="onTopologyMapClick($event)">
+              <svg :viewBox="`0 0 ${topologyLayout.width} ${topologyLayout.height}`" class="h-full min-h-[23rem] w-full" role="img"
+                   :aria-label="`${topologyLayout.nodes.length} ${translated('topology.map_aria', 'assets in the ForgeOS network topology')}`"
+                   x-html="topologySvgContent"></svg>
+            </div>
+
+            <div x-show="!topologyLoading && !topologyLayout.nodes.length" class="py-10 text-center">
+              <p class="text-sm text-muted" data-i18n="topology.empty">No assets yet. Add assets to build the network topology.</p>
+            </div>
+
+            <div x-show="topologyLoading" x-cloak class="py-10 text-center">
+              <p class="text-sm text-muted" data-i18n="topology.loading">Loading topology…</p>
+            </div>
+
+            <div class="px-5 pb-5 pt-1">
+              <div class="flex flex-wrap items-center gap-4 text-[10px] uppercase tracking-wider text-muted">
+                <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--accent-emerald);"></span><span data-i18n="topology.legend_pass">Pass</span></span>
+                <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--accent-danger);"></span><span data-i18n="topology.legend_fail">Fail</span></span>
+                <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--accent-amber);"></span><span data-i18n="topology.legend_warning">Warning</span></span>
+                <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--accent-cyan);"></span><span data-i18n="topology.legend_root">Internet source</span></span>
+                <span class="ml-auto" x-show="isAdmin">
+                  <span data-i18n="topology.click_hint">Click a node to toggle its internet source.</span>
+                </span>
+              </div>
+            </div>
+
+            <form x-show="showTopologyLinkForm && isAdmin" @submit.prevent="saveTopologyLink()" class="surface mb-4 grid gap-4 p-5 md:grid-cols-2 mx-5" style="border-color: rgba(6,182,212,0.2);">
+              <div class="field">
+                <label class="field__label" for="topo-source" data-i18n="topology.source">Source asset</label>
+                <select id="topo-source" x-model="topologyLinkForm.source_id" required class="control">
+                  <option value="" data-i18n="topology.select_asset">Select asset…</option>
+                  <template x-for="asset in topology.assets" :key="`src-${asset.id}`">
+                    <option :value="asset.id" x-text="asset.asset_tag || asset.asset_name"></option>
                   </template>
-                </g>
-                <g class="topology-node topology-node--pass" tabindex="0" aria-label="ForgeOS local control node">
-                  <circle cx="400" cy="180" r="34"></circle>
-                  <text x="400" y="176" text-anchor="middle">FORGEOS</text>
-                  <text x="400" y="192" text-anchor="middle">CONTROL</text>
-                </g>
-                <template x-for="node in topologyNodes" :key="`map-node-${node.id}`">
-                  <g class="topology-node" :class="topologyNodeClass(node.status)" tabindex="0"
-                     @click="loadTargetLogs(node)" @keydown.enter.prevent="loadTargetLogs(node)"
-                     :aria-label="`${node.name}, ${node.status}, ${node.latency}`">
-                    <circle :cx="node.x" :cy="node.y" r="24"></circle>
-                    <text :x="node.x" :y="node.y + 4" text-anchor="middle" x-text="node.shortName"></text>
-                    <text :x="node.x" :y="node.y + 42" text-anchor="middle" x-text="node.latency"></text>
-                  </g>
-                </template>
-              </svg>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label" for="topo-target" data-i18n="topology.target">Target asset</label>
+                <select id="topo-target" x-model="topologyLinkForm.target_id" required class="control">
+                  <option value="" data-i18n="topology.select_asset">Select asset…</option>
+                  <template x-for="asset in topology.assets" :key="`tgt-${asset.id}`">
+                    <option :value="asset.id" x-text="asset.asset_tag || asset.asset_name"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label" for="topo-type" data-i18n="topology.link_type">Link type</label>
+                <select id="topo-type" x-model="topologyLinkForm.link_type" class="control">
+                  <option value="ethernet" data-i18n="topology.ethernet">Ethernet</option>
+                  <option value="wireless" data-i18n="topology.wireless">Wireless</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label" for="topo-label" data-i18n="topology.label">Label (optional)</label>
+                <input id="topo-label" x-model="topologyLinkForm.label" maxlength="200" class="control" :placeholder="translated('topology.label_placeholder', 'e.g. Uplink port 1')">
+              </div>
+              <div class="flex items-center gap-2 md:col-span-2">
+                <button type="submit" :disabled="topologySaving" class="btn--primary" x-text="editingTopologyLinkId ? translated('topology.update_link', 'Update Link') : translated('topology.add_link', 'Add Link')"></button>
+                <button type="button" @click="showTopologyLinkForm = false; editingTopologyLinkId = null" class="btn--ghost" data-i18n="topology.cancel">Cancel</button>
+              </div>
+            </form>
+
+            <div class="px-5 pb-5">
+              <div class="overflow-x-auto">
+                <table class="table table--compact w-full">
+                  <thead>
+                    <tr>
+                      <th data-i18n="topology.table_source">Source</th>
+                      <th data-i18n="topology.table_target">Target</th>
+                      <th data-i18n="topology.table_type">Type</th>
+                      <th data-i18n="topology.table_label">Label</th>
+                      <th x-show="isAdmin"><span class="sr-only" data-i18n="topology.table_actions">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="link in topology.links" :key="link.id">
+                      <tr>
+                        <td x-text="topologyAssetName(link.source_id)"></td>
+                        <td x-text="topologyAssetName(link.target_id)"></td>
+                        <td x-text="link.link_type"></td>
+                        <td x-text="link.label || '—'"></td>
+                        <td x-show="isAdmin" class="whitespace-nowrap">
+                          <button @click="editTopologyLink(link)" class="btn--ghost btn--xs" data-i18n="topology.edit">Edit</button>
+                          <button @click="deleteTopologyLink(link)" class="btn--danger btn--xs" data-i18n="topology.delete">Delete</button>
+                        </td>
+                      </tr>
+                    </template>
+                    <tr x-show="!topology.links.length">
+                      <td colspan="5" class="py-4 text-center text-sm text-muted" data-i18n="topology.no_links">No links configured.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
 
@@ -924,14 +1006,16 @@
             </div>
           </form>
 
-          <div class="table-shell">
+          <div class="grid gap-3 xl:grid-cols-2">
+            <div class="min-w-0">
+              <div class="table-shell">
             <div class="table-shell__header p-4">
               <label class="relative block max-w-md">
                 <svg class="absolute left-3 top-3 h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
                 <input x-model="targetSearch" type="search" :placeholder="translated('monitoring.search_placeholder', 'Search targets by name or address…')" class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-secondary focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10">
               </label>
             </div>
-            <div x-show="monitoringLoading" class="loading-state p-4">
+            <div x-show="monitoringLoading" x-cloak class="loading-state p-4">
               <div class="flex items-center gap-4 border-b border-slate-800/60 px-5 py-3">
                 <div class="h-4 w-32 animate-pulse rounded bg-slate-800"></div>
                 <div class="h-4 w-40 animate-pulse rounded bg-slate-800"></div>
@@ -1006,9 +1090,11 @@
                 <button x-show="isAdmin && !targetSearch" @click="openTargetForm()" class="btn--primary mt-4" data-i18n="monitoring.add">Add Target</button>
               </div>
             </div>
-          </div>
+            </div>
+            </div>
 
-          <div x-show="selectedTarget" class="surface mt-6 p-5">
+            <div class="min-w-0">
+              <div x-show="selectedTarget" class="surface mt-6 p-5">
             <h3 class="font-semibold text-white"><span x-text="selectedTarget?.name"></span> · <span data-i18n="monitoring.history">History</span></h3>
             <p x-show="selectedLogsLoading" class="mt-4 text-sm text-secondary" data-i18n="monitoring.history_loading">Loading history…</p>
             <p x-show="selectedLogsError" class="mt-4 text-sm text-rose-300" x-text="selectedLogsError"></p>
@@ -1041,6 +1127,8 @@
                   <span class="shrink-0 text-secondary" x-text="formatDateTime(event.timestamp)"></span>
                 </div>
               </template>
+            </div>
+            </div>
             </div>
           </div>
         </section>
@@ -1409,11 +1497,12 @@
   </div>
 
   <div x-show="extractModal" x-cloak @keydown.escape.window="extractModal = false" class="fixed inset-0 z-[55] grid place-items-center bg-slate-950/90 p-4 backdrop-blur-sm">
-    <div @click.outside="extractModal = false" x-transition class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+    <div @click.outside="extractModal = false" x-transition class="enterprise-panel max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl p-6 sm:p-7">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <h3 class="text-lg font-semibold text-white">Extract Asset Details</h3>
-          <p class="mt-1 text-sm text-secondary">Parse a DxDiag, systeminfo, or Linux report. The report itself is never stored — only the fields you select are applied to the asset form.</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">Report Extraction</p>
+          <h3 class="mt-1 text-xl font-semibold text-white">Extract Asset Details</h3>
+          <p class="mt-1 text-sm text-slate-400">Parse a DxDiag, systeminfo, or Linux report. The report itself is never stored — only the fields you select are applied to the asset form.</p>
         </div>
         <button @click="extractModal = false" class="rounded-lg p-2 text-muted hover:bg-slate-800 hover:text-white" aria-label="Close extraction dialog">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
@@ -1421,10 +1510,10 @@
       </div>
 
       <div class="mt-5 grid gap-4">
-        <label class="block">
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Report Files (.txt, .log)</span>
+        <label class="field">
+          <span class="field__label">Report Files (.txt, .log)</span>
           <input @change="extractFilesChanged($event)" type="file" accept=".txt,.log,text/plain" multiple
-                 class="block w-full cursor-pointer rounded-xl border border-slate-800 bg-slate-950/70 text-sm text-slate-400 file:mr-4 file:border-0 file:bg-cyan-400/10 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-cyan-300">
+                 class="control cursor-pointer text-slate-400 file:mr-4 file:border-0 file:bg-cyan-400/10 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-cyan-300">
           <template x-if="extractFiles && extractFiles.length">
             <p class="mt-2 text-xs text-cyan-300" x-text="extractFiles.length + ' file(s) selected'"></p>
             <ul class="mt-1 max-h-24 overflow-y-auto text-[11px] text-slate-400">
@@ -1434,10 +1523,10 @@
             </ul>
           </template>
         </label>
-        <label class="block">
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Or paste report text</span>
+        <label class="field">
+          <span class="field__label">Or paste report text</span>
           <textarea x-model="extractText" rows="6" placeholder="Paste DxDiag / systeminfo / Linux report output here…"
-                    class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 font-mono text-xs text-white outline-none focus:border-cyan-500/50 placeholder:text-slate-700"></textarea>
+                    class="control font-mono text-xs placeholder:text-slate-700"></textarea>
         </label>
         <div class="flex flex-wrap gap-3">
           <button type="button" @click="runExtraction()" :disabled="extractBusy || (!extractFiles?.length && !(extractText || '').trim())" class="btn--primary inline-flex items-center justify-center gap-2 disabled:opacity-50">
@@ -1501,39 +1590,44 @@
     </div>
   </div>
 
-  <div x-show="personModal" x-cloak @keydown.escape.window="personModal = false" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4 backdrop-blur-sm">
-    <div @click.outside="personModal = false" x-transition class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
-      <div class="flex items-start justify-between">
-        <div><h3 class="text-lg font-semibold text-white" x-text="editingPersonId ? 'Edit Person' : 'Register New Person'"></h3><p class="mt-1 text-sm text-secondary" x-text="editingPersonId ? 'Update the details of this asset custodian.' : 'Add a person who can receive asset assignments.'"></p></div>
+  <div x-show="personModal" x-cloak @keydown.escape.window="personModal = false" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/85 p-4 backdrop-blur-sm"
+       x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-out duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+    <div @click.outside="personModal = false" role="dialog" aria-modal="true" aria-labelledby="person-modal-title"
+         class="enterprise-panel max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl p-6 sm:p-7"
+         x-transition:enter="transition ease-out duration-150" x-transition:enter-start="translate-y-2 opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transition ease-out duration-100" x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-1 opacity-0">
+      <div class="flex items-start justify-between gap-3">
+        <div><p class="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">Asset Custodians</p><h3 id="person-modal-title" class="mt-1 text-xl font-semibold text-white" x-text="editingPersonId ? 'Edit Person' : 'Register New Person'"></h3><p class="mt-1 text-sm text-slate-400" x-text="editingPersonId ? 'Update the details of this asset custodian.' : 'Add a person who can receive asset assignments.'"></p></div>
         <button @click="personModal = false" class="rounded-lg p-2 text-muted hover:bg-slate-800 hover:text-white" aria-label="Close person dialog">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
         </button>
       </div>
       <form @submit.prevent="savePerson()" class="mt-6 grid gap-4 sm:grid-cols-2">
-        <label class="sm:col-span-2">
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Full Name</span>
-          <input x-model="newPerson.full_name" required placeholder="Jane Doe" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
-        </label>
-        <label>
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Org Unit</span>
-          <input x-model="newPerson.org_unit" placeholder="Operations" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
-        </label>
-        <label>
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Job Role</span>
-          <input x-model="newPerson.job_role" placeholder="Technician" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
-        </label>
-        <label>
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Email</span>
-          <input x-model="newPerson.email" type="email" placeholder="jane@example.com" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
-        </label>
-        <label>
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Phone</span>
-          <input x-model="newPerson.phone" placeholder="+1 555 0100" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-500/50">
-        </label>
-        <label class="sm:col-span-2">
-          <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">Notes</span>
-          <textarea x-model="newPerson.notes" rows="3" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50"></textarea>
-        </label>
+        <div class="field sm:col-span-2">
+          <label class="field__label" for="person-name">Full Name</label>
+          <input id="person-name" x-model="newPerson.full_name" required placeholder="Jane Doe" class="control">
+        </div>
+        <div class="field">
+          <label class="field__label" for="person-org">Org Unit</label>
+          <input id="person-org" x-model="newPerson.org_unit" placeholder="Operations" class="control">
+        </div>
+        <div class="field">
+          <label class="field__label" for="person-role">Job Role</label>
+          <input id="person-role" x-model="newPerson.job_role" placeholder="Technician" class="control">
+        </div>
+        <div class="field">
+          <label class="field__label" for="person-email">Email</label>
+          <input id="person-email" x-model="newPerson.email" type="email" placeholder="jane@example.com" class="control">
+        </div>
+        <div class="field">
+          <label class="field__label" for="person-phone">Phone</label>
+          <input id="person-phone" x-model="newPerson.phone" placeholder="+1 555 0100" class="control">
+        </div>
+        <div class="field sm:col-span-2">
+          <label class="field__label" for="person-notes">Notes</label>
+          <textarea id="person-notes" x-model="newPerson.notes" rows="3" class="control"></textarea>
+        </div>
         <div class="mt-2 flex justify-end gap-3 border-t border-slate-800 pt-5 sm:col-span-2">
           <button type="button" @click="personModal = false" class="btn--secondary" data-i18n="modal.cancel">Cancel</button>
           <button type="submit" :disabled="saving" class="btn--primary" x-text="saving ? translated('modal.saving', 'Saving…') : (editingPersonId ? 'Save Changes' : 'Create Person')"></button>
@@ -1659,8 +1753,34 @@
         firewall: "Networking", "access point": "Networking", mobile: "Mobile", tablet: "Mobile",
         phone: "Mobile", peripheral: "Peripheral", other: "Other"
       };
+      const ASSET_TYPE_ICONS = {
+        router: '<rect x="6.5" y="4" width="11" height="16" rx="2"/><path d="M10 8h.01M14 8h.01M10 12h.01M14 12h.01M10 16h.01M14 16h.01"/>',
+        switch: '<rect x="3" y="6" width="18" height="4" rx="1"/><rect x="3" y="14" width="18" height="4" rx="1"/><path d="M7 8h.01M11 8h.01M15 8h.01M7 16h.01M11 16h.01M15 16h.01"/>',
+        wireless: '<path d="M12 18h.01M5 8a10 10 0 0 1 14 0M8 11.5a6 6 0 0 1 8 0"/>',
+        firewall: '<path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/><path d="m9 12 2 2 4-5"/>',
+        network: '<circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="m7 11 10-4M7 13l10 4"/>',
+        server: '<rect x="4" y="3" width="16" height="6" rx="1"/><rect x="4" y="15" width="16" height="6" rx="1"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 18h.01M12 18h.01M16 18h.01"/>',
+        desktop: '<rect x="3" y="4" width="14" height="10" rx="1"/><path d="M10 14v3M7 20h6M8 17h4"/>',
+        laptop: '<rect x="5" y="4" width="14" height="10" rx="1.5"/><path d="M3 18h18l-1-2H4l-1 2Z"/>',
+        monitor: '<rect x="4" y="4" width="16" height="10" rx="1"/><path d="M12 14v4M8 18h8M9 12h6"/>',
+        printer: '<path d="M7 8V4h10v4"/><rect x="4" y="8" width="16" height="7" rx="1"/><path d="M7 15v4h10v-4"/>'
+      };
+      function assetTypeIcon(type) {
+        const t = String(type || "").toLowerCase();
+        if (/(router|mikrotik|gateway)/.test(t)) return ASSET_TYPE_ICONS.router;
+        if (/(switch|hub)/.test(t)) return ASSET_TYPE_ICONS.switch;
+        if (/(access|ap|wireless|wifi)/.test(t)) return ASSET_TYPE_ICONS.wireless;
+        if (/(firewall)/.test(t)) return ASSET_TYPE_ICONS.firewall;
+        if (/(server|rack|nas)/.test(t)) return ASSET_TYPE_ICONS.server;
+        if (/(desktop|pc|workstation)/.test(t)) return ASSET_TYPE_ICONS.desktop;
+        if (/(laptop|mobile|phone|tablet)/.test(t)) return ASSET_TYPE_ICONS.laptop;
+        if (/(monitor|display)/.test(t)) return ASSET_TYPE_ICONS.monitor;
+        if (/(printer|print)/.test(t)) return ASSET_TYPE_ICONS.printer;
+        if (/(network|firewall|switch|router|access)/.test(t)) return ASSET_TYPE_ICONS.network;
+        return ASSET_TYPE_ICONS.network;
+      }
       return {
-        page: "dashboard", preferencesTab: "access", loading: true, saving: false, assetModal: false, editingAssetId: null, personModal: false, editingPersonId: null, authenticated: Boolean(localStorage.getItem("forgeos-token")),
+        page: "dashboard", preferencesTab: "access", loading: true, dashboardLoading: true, saving: false, assetModal: false, editingAssetId: null, personModal: false, editingPersonId: null, authenticated: Boolean(localStorage.getItem("forgeos-token")),
         sidebarCollapsed: localStorage.getItem("forgeos-sidebar-collapsed") === "true",
         commandPaletteOpen: false, commandQuery: "",
         currentUser: null, loginForm: { username: "", password: "" },
@@ -1675,6 +1795,8 @@
         monitoringLoading: false, monitoringSaving: false, monitoringError: "", selectedLogsLoading: false, selectedLogsError: "", showTargetForm: false, monitoringTimer: null,
         targetForm: { id: null, name: "", ip_or_host: "", target_type: "website", ping_interval_sec: 60, allow_private_networks: false, enabled: true },
         targetSearch: "",
+        topologyLoading: false, topologyError: "", topologySaving: false, topology: { assets: [], links: [] }, showTopologyLinkForm: false, editingTopologyLinkId: null,
+        topologyLinkForm: { source_id: "", target_id: "", link_type: "ethernet", label: "" },
         showUserForm: false, userForm: { id: null, username: "", password: "", role: "VIEW", is_active: true },
         summary: { counts: { assets: 0, people: 0, active_assignments: 0, system_snapshots: 0 }, warnings: { expiring_warranties: [], missing_serial: [], unassigned_assets: [] }, warning_count: 0, recent_activity: [] },
 invoiceFile: null,
@@ -1785,9 +1907,10 @@ navigation: [
            if (window.forgeI18n) await window.forgeI18n.setLanguage(this.language);
            if (this.authenticated) {
              try { this.currentUser = await this.api("/api/v1/auth/me"); } catch (_) { this.logout(); }
-              if (this.authenticated) await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.refreshMonitoring(false), this.loadUsers(), this.loadExportHistory(), this.loadWarehouse(), this.loadReferences()]);
+               if (this.authenticated) await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.refreshMonitoring(false), this.loadTopology(false), this.loadUsers(), this.loadExportHistory(), this.loadWarehouse(), this.loadReferences()]);
            }
            if (["dashboard", "monitoring"].includes(this.page)) this.startMonitoringPolling();
+           this.dashboardLoading = false;
            this.loading = false;
          },
         get isAdmin() { return String(this.currentUser?.role || "").toUpperCase() === "ADMIN"; },
@@ -1932,6 +2055,154 @@ navigation: [
               latency: target.last_latency_ms != null ? `${this.formatNumber(target.last_latency_ms, { maximumFractionDigits: 0 })}ms` : "n/a",
             };
           });
+        },
+        get monitoringMapSvg() {
+          const nodes = this.topologyNodes;
+          const parts = [];
+          if (!nodes.length) {
+            parts.push(`<text x="400" y="330" text-anchor="middle" fill="#697386" font-family="JetBrains Mono" font-size="10">NO MONITORED TARGETS CONFIGURED</text>`);
+            return parts.join("");
+          }
+          parts.push(`<g aria-hidden="true">`);
+          for (const node of nodes) {
+            parts.push(`<line class="topology-edge" x1="400" y1="180" x2="${node.x}" y2="${node.y}"></line>`);
+          }
+          parts.push(`</g>`);
+          parts.push(`<g class="topology-node topology-node--pass" tabindex="0" aria-label="ForgeOS local control node"><circle cx="400" cy="180" r="34"></circle><text x="400" y="176" text-anchor="middle">FORGEOS</text><text x="400" y="192" text-anchor="middle">CONTROL</text></g>`);
+          for (const node of nodes) {
+            const statusClass = this.topologyNodeClass(node.status);
+            const label = this.escapeAttr(`${node.name}, ${node.status}, ${node.latency}`);
+            parts.push(`<g class="topology-node ${statusClass}" tabindex="0" data-target-id="${this.escapeAttr(node.id)}" aria-label="${label}"><circle cx="${node.x}" cy="${node.y}" r="24"></circle><text x="${node.x}" y="${node.y + 4}" text-anchor="middle">${this.escapeAttr(node.shortName)}</text><text x="${node.x}" y="${node.y + 42}" text-anchor="middle">${this.escapeAttr(node.latency)}</text></g>`);
+          }
+          return parts.join("");
+        },
+        get topologyLayout() {
+          const assets = this.topology?.assets || [];
+          const links = this.topology?.links || [];
+          if (!assets.length) return { nodes: [], edges: [], width: 800, height: 320 };
+          const byId = {};
+          assets.forEach(asset => { byId[asset.id] = asset; });
+          const children = {};
+          links.forEach(link => {
+            if (!byId[link.source_id] || !byId[link.target_id]) return;
+            (children[link.source_id] = children[link.source_id] || []).push(link);
+          });
+          const hasParent = {};
+          links.forEach(link => { hasParent[link.target_id] = true; });
+          let roots = assets.filter(asset => asset.is_internet_source);
+          if (!roots.length) roots = assets.filter(asset => !hasParent[asset.id]);
+          if (!roots.length) roots = assets.slice(0, 1);
+
+          const depth = {};
+          const order = [];
+          const seen = new Set();
+          const queue = roots.map(asset => asset.id);
+          queue.forEach(id => { depth[id] = 0; seen.add(id); });
+          while (queue.length) {
+            const current = queue.shift();
+            order.push(current);
+            (children[current] || []).forEach(link => {
+              if (seen.has(link.target_id)) return;
+              seen.add(link.target_id);
+              depth[link.target_id] = depth[current] + 1;
+              queue.push(link.target_id);
+            });
+          }
+          assets.forEach(asset => {
+            if (!seen.has(asset.id)) { seen.add(asset.id); depth[asset.id] = 0; order.push(asset.id); }
+          });
+
+          const byDepth = {};
+          order.forEach(id => { (byDepth[depth[id]] = byDepth[depth[id]] || []).push(id); });
+          const maxDepth = Math.max(...Object.keys(byDepth).map(Number), 0);
+          const maxRows = Math.max(...Object.values(byDepth).map(list => list.length), 1);
+          const COL = 210, ROW = 96, LEFT = 90, TOP = 70;
+          const positions = {};
+          Object.keys(byDepth).forEach(level => {
+            const ids = byDepth[level];
+            const n = ids.length;
+            const startY = TOP + (maxRows - n) * (ROW / 2);
+            ids.forEach((id, index) => {
+              positions[id] = { x: LEFT + Number(level) * COL, y: startY + index * ROW };
+            });
+          });
+          const width = LEFT + (maxDepth + 1) * COL + 60;
+          const height = TOP + (maxRows - 1) * ROW + 90;
+
+          const statusByAsset = {};
+          assets.forEach(asset => { statusByAsset[asset.id] = this.assetTopologyStatus(asset); });
+          const nodes = assets.map(asset => ({
+            ...asset,
+            x: positions[asset.id].x,
+            y: positions[asset.id].y,
+            depth: depth[asset.id] ?? 0,
+            isRoot: Boolean(asset.is_internet_source) || roots.some(root => root.id === asset.id),
+            icon: assetTypeIcon(asset.type),
+            shortName: (asset.asset_tag || asset.hostname || asset.asset_name || `A${asset.id}`).replace(/[^A-Za-z0-9]/g, "").slice(0, 8).toUpperCase() || `A${asset.id}`,
+            status: statusByAsset[asset.id],
+          }));
+          const edges = links.map(link => {
+            const from = positions[link.source_id];
+            const to = positions[link.target_id];
+            if (!from || !to) return null;
+            return {
+              id: link.id,
+              source_id: link.source_id,
+              target_id: link.target_id,
+              link_type: link.link_type,
+              label: link.label,
+              x1: from.x, y1: from.y,
+              x2: to.x, y2: to.y,
+              status: statusByAsset[link.target_id],
+            };
+          }).filter(Boolean);
+          return { nodes, edges, width, height };
+        },
+        get topologySvgContent() {
+          const layout = this.topologyLayout;
+          const parts = [];
+          if (layout.edges.length) {
+            parts.push(`<g aria-hidden="true">`);
+            for (const edge of layout.edges) {
+              const wireless = edge.link_type === "wireless" ? "topology-edge--wireless" : "";
+              const statusClass = edge.status ? ` topology-edge--${edge.status.toLowerCase()}` : " topology-edge--unknown";
+              parts.push(`<line class="topology-edge ${wireless}${statusClass}" x1="${edge.x1}" y1="${edge.y1}" x2="${edge.x2}" y2="${edge.y2}"></line>`);
+            }
+            parts.push(`</g>`);
+          }
+          for (const node of layout.nodes) {
+            const statusClass = this.topologyNodeClass(node.status);
+            const rootClass = node.isRoot ? " topology-node--root" : "";
+            const label = this.escapeAttr(`${node.asset_tag || node.asset_name}, ${node.status}`);
+            parts.push(`<g class="topology-node ${statusClass}${rootClass}" tabindex="0" data-asset-id="${this.escapeAttr(node.id)}" aria-label="${label}"><circle cx="${node.x}" cy="${node.y}" r="30"></circle><g transform="translate(${node.x - 11}, ${node.y - 11}) scale(0.92)" fill="currentColor">${node.icon}</g><text x="${node.x}" y="${node.y + 46}" text-anchor="middle">${this.escapeAttr(node.shortName)}</text></g>`);
+          }
+          return parts.join("");
+        },
+        escapeAttr(value) {
+          return String(value ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        },
+        onReachabilityMapClick(event) {
+          const el = event.target.closest("[data-target-id]");
+          if (!el) return;
+          const id = Number(el.dataset.targetId);
+          const node = this.targets.find(target => Number(target.id) === id);
+          if (!node) return;
+          if (this.page === "dashboard") this.openTopologyTarget(node);
+          else this.loadTargetLogs(node);
+        },
+        onTopologyMapClick(event) {
+          if (!this.isAdmin) return;
+          const el = event.target.closest("[data-asset-id]");
+          if (!el) return;
+          const id = Number(el.dataset.assetId);
+          const node = (this.topology?.assets || []).find(asset => Number(asset.id) === id);
+          if (node) this.setInternetSource(node, !node.is_internet_source);
+        },
+        assetTopologyStatus(asset) {
+          const key = String(asset.ip_address || asset.hostname || "").trim().toLowerCase();
+          if (!key) return "UNKNOWN";
+          const target = this.targets.find(item => String(item.ip_or_host || "").trim().toLowerCase() === key || String(item.name || "").trim().toLowerCase() === key);
+          return target?.status || "UNKNOWN";
         },
         get commands() {
           return [
@@ -2227,11 +2498,19 @@ async openReference(document, preview = false) {
           } catch (error) { this.toast(error.message, "error"); }
           finally { this.referenceUploading = false; }
         },
+        async deleteReference(document) {
+          if (!window.confirm(this.translated("references.delete_confirm", "Delete reference “{title}”?").replace("{title}", document.title))) return;
+          try {
+            await this.api(`/api/v1/references/${document.id}`, { method: "DELETE" });
+            await this.loadReferences();
+            this.toast(this.translated("references.deleted", "Reference document deleted"));
+          } catch (error) { this.toast(error.message, "error"); }
+        },
         async loadPeople() { try { this.people = await this.api("/api/v1/people"); } catch (error) { this.toast(error.message, "error"); } },
          async loadUsers() { if (this.isAdmin) try { this.users = await this.api("/api/v1/users"); } catch (error) { this.toast(error.message, "error"); } },
          async loadTargets() { try { this.targets = await this.api("/api/v1/monitoring/targets"); } catch (error) { this.toast(error.message, "error"); } },
          async loadExportHistory() { this.exportHistoryLoading = true; this.exportHistoryError = false; try { this.exportHistory = await this.api("/api/v1/export/history"); } catch (_) { this.exportHistoryError = true; } finally { this.exportHistoryLoading = false; } },
-        async refreshCurrent() { this.loading = true; await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.refreshMonitoring(false), this.loadExportHistory(), this.loadUsers()]); this.loading = false; this.toast("Workspace refreshed"); },
+        async refreshCurrent() { this.dashboardLoading = true; this.loading = true; await Promise.all([this.loadSummary(), this.loadAssets(), this.loadPeople(), this.refreshMonitoring(false), this.loadExportHistory(), this.loadUsers()]); this.dashboardLoading = false; this.loading = false; this.toast("Workspace refreshed"); },
         async refreshMonitoring(showToast = false) {
           this.monitoringLoading = true; this.monitoringError = "";
           try {
@@ -2295,6 +2574,76 @@ async openReference(document, preview = false) {
           } catch (error) { this.toast(error.message, "error"); }
         },
         targetName(targetId) { return this.targets.find(item => item.id === targetId)?.name || this.translated("monitoring.target_fallback", "Target #{id}").replace("{id}", targetId); },
+        async loadTopology(showToast = false) {
+          this.topologyLoading = true; this.topologyError = "";
+          try {
+            this.topology = await this.api("/api/v1/topology");
+            if (showToast) this.toast(this.translated("topology.refreshed", "Topology refreshed"));
+          } catch (error) {
+            this.topologyError = error.message;
+            if (showToast) this.toast(error.message, "error");
+          } finally { this.topologyLoading = false; }
+        },
+        topologyAssetName(assetId) {
+          const asset = this.topology?.assets?.find(item => item.id === assetId);
+          return asset ? (asset.asset_tag || asset.hostname || asset.asset_name || `A${assetId}`) : this.translated("topology.asset_missing", "Asset #{id}").replace("{id}", assetId);
+        },
+        topologyAsset(assetId) { return this.topology?.assets?.find(item => item.id === assetId); },
+        openTopologyLinkForm() {
+          const links = this.topology?.links || [];
+          const hasParent = {};
+          links.forEach(link => { hasParent[link.target_id] = true; });
+          this.topologyLinkForm = { source_id: "", target_id: "", link_type: "ethernet", label: "" };
+          this.editingTopologyLinkId = null;
+          this.showTopologyLinkForm = true;
+        },
+        editTopologyLink(link) {
+          this.topologyLinkForm = { source_id: link.source_id, target_id: link.target_id, link_type: link.link_type, label: link.label || "" };
+          this.editingTopologyLinkId = link.id;
+          this.showTopologyLinkForm = true;
+        },
+        async saveTopologyLink() {
+          if (!this.topologyLinkForm.source_id || !this.topologyLinkForm.target_id) { this.toast(this.translated("topology.link_required", "Select both source and target assets"), "error"); return; }
+          if (this.topologyLinkForm.source_id === this.topologyLinkForm.target_id) { this.toast(this.translated("topology.self_link", "Source and target must be different"), "error"); return; }
+          const duplicate = (this.topology?.links || []).some(link =>
+            link.id !== this.editingTopologyLinkId &&
+            Number(link.source_id) === Number(this.topologyLinkForm.source_id) &&
+            Number(link.target_id) === Number(this.topologyLinkForm.target_id)
+          );
+          if (duplicate) { this.toast(this.translated("topology.link_duplicate", "A link already exists between these assets"), "error"); return; }
+          this.topologySaving = true;
+          try {
+            const payload = { ...this.topologyLinkForm };
+            if (!payload.label) delete payload.label;
+            if (this.editingTopologyLinkId) {
+              await this.api(`/api/v1/topology/links/${this.editingTopologyLinkId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+              this.toast(this.translated("topology.link_updated", "Link updated"));
+            } else {
+              await this.api("/api/v1/topology/links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+              this.toast(this.translated("topology.link_added", "Link added"));
+            }
+            this.editingTopologyLinkId = null;
+            this.showTopologyLinkForm = false;
+            await this.loadTopology(false);
+          } catch (error) { this.toast(error.message, "error"); }
+          finally { this.topologySaving = false; }
+        },
+        async deleteTopologyLink(link) {
+          if (!window.confirm(this.translated("topology.link_delete_confirm", "Remove link from “{source}” to “{target}”?").replace("{source}", this.topologyAssetName(link.source_id)).replace("{target}", this.topologyAssetName(link.target_id)))) return;
+          try {
+            await this.api(`/api/v1/topology/links/${link.id}`, { method: "DELETE" });
+            await this.loadTopology(false);
+            this.toast(this.translated("topology.link_deleted", "Link removed"));
+          } catch (error) { this.toast(error.message, "error"); }
+        },
+        async setInternetSource(asset, value) {
+          try {
+            await this.api(`/api/v1/assets/${asset.id}/topology`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_internet_source: value }) });
+            await this.loadTopology(false);
+            this.toast(value ? this.translated("topology.source_set", "Internet source set") : this.translated("topology.source_cleared", "Internet source cleared"));
+          } catch (error) { this.toast(error.message, "error"); }
+        },
+        assetTopologyIcon(type) { return assetTypeIcon(type); },
         openNewAsset() {
           this.editingAssetId = null;
           this.invoiceFile = null;
@@ -2503,6 +2852,7 @@ async openReference(document, preview = false) {
             model: parsed.model || "",
             serial_number: parsed.serial_number || "",
             hostname: parsed.hostname || "",
+            ip_address: parsed.ip_address || "",
             cpu_name: parsed.cpu_name || "",
             ram_mb: parsed.ram_mb != null ? String(parsed.ram_mb) : "",
             gpu_name: parsed.gpu_name || "",
@@ -2512,6 +2862,9 @@ async openReference(document, preview = false) {
             specifications: {
               storage_type: parsed.storage_type || null,
               storage_capacity: parsed.storage_capacity || null,
+              cpu_cores: parsed.cpu_cores != null ? parsed.cpu_cores : null,
+              logical_cpu_cores: parsed.logical_cpu_cores != null ? parsed.logical_cpu_cores : null,
+              architecture: parsed.architecture || null,
             },
           };
           this.manualMode = true;
@@ -2603,6 +2956,7 @@ async openReference(document, preview = false) {
             applied += 1;
           }
           this.extractModal = false;
+          this.assetModal = true;
           this.extractCandidates = [];
           this.extractFiles = [];
           this.extractText = "";

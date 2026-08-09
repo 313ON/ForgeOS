@@ -86,6 +86,9 @@ REFERENCE_KEYS = (
     "references.field_file",
     "references.uploading",
     "references.uploaded",
+    "references.delete",
+    "references.delete_confirm",
+    "references.deleted",
 )
 
 

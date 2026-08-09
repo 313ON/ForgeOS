@@ -69,6 +69,9 @@ TABLE_MIGRATIONS: dict[str, dict[str, str]] = {
         "probe_source": "VARCHAR(100) NOT NULL DEFAULT 'local'",
     },
     "users": {},
+    "reference_documents": {
+        "deleted_at": "DATETIME",
+    },
 }
 
 
@@ -372,6 +375,51 @@ def migrate_export_log_table(engine: Engine) -> list[str]:
             )
         )
         added.append("export_logs")
+    return added
+
+
+def migrate_phase_6_topology(engine: Engine) -> list[str]:
+    """Create the network_links table and add assets.is_internet_source (idempotent)."""
+    added: list[str] = []
+    inspector = inspect(engine)
+    table_names = set(inspector.get_table_names())
+
+    if "network_links" not in table_names:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE network_links (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        source_id INTEGER NOT NULL,
+                        target_id INTEGER NOT NULL,
+                        link_type VARCHAR(20) NOT NULL DEFAULT 'ethernet',
+                        label VARCHAR(200),
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        deleted_at DATETIME,
+                        FOREIGN KEY(source_id) REFERENCES assets(id) ON DELETE CASCADE,
+                        FOREIGN KEY(target_id) REFERENCES assets(id) ON DELETE CASCADE
+                    )
+                    """
+                )
+            )
+            connection.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_network_links_source ON network_links(source_id)")
+            )
+            connection.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_network_links_target ON network_links(target_id)")
+            )
+        added.append("network_links")
+
+    if "assets" in table_names:
+        asset_columns = {column["name"] for column in inspector.get_columns("assets")}
+        if "is_internet_source" not in asset_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE assets ADD COLUMN is_internet_source BOOLEAN NOT NULL DEFAULT 0")
+                )
+            added.append("assets.is_internet_source")
+
     return added
 
 

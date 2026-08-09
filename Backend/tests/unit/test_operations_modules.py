@@ -123,3 +123,70 @@ def test_selected_exports_reject_missing_ids() -> None:
     viewer = login(client, "viewer", "viewer-password")
     response = client.get("/api/export/excel?asset_id=9999", headers=viewer)
     assert response.status_code == 404
+
+
+def _upload_reference(client, admin, title="Runbook") -> int:
+    response = client.post(
+        "/api/v1/references",
+        headers=admin,
+        data={"title": title},
+        files={"file": (f"{title}.pdf", b"%PDF-test", "application/pdf")},
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
+def test_reference_delete_authorization(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(reference_store, "REFERENCE_DIR", tmp_path / "references")
+    client = build_app()
+    admin = login(client, "admin", "admin-password")
+    viewer = login(client, "viewer", "viewer-password")
+    document_id = _upload_reference(client, admin)
+
+    denied = client.delete(f"/api/v1/references/{document_id}", headers=viewer)
+    assert denied.status_code == 403
+    listed = client.get("/api/v1/references", headers=viewer).json()
+    assert any(item["id"] == document_id for item in listed)
+
+
+def test_reference_soft_delete_hides_from_list_and_download(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(reference_store, "REFERENCE_DIR", tmp_path / "references")
+    client = build_app()
+    admin = login(client, "admin", "admin-password")
+    viewer = login(client, "viewer", "viewer-password")
+    document_id = _upload_reference(client, admin)
+
+    deleted = client.delete(f"/api/v1/references/{document_id}", headers=admin)
+    assert deleted.status_code == 204
+
+    listed = client.get("/api/v1/references", headers=viewer).json()
+    assert all(item["id"] != document_id for item in listed)
+    assert client.get(f"/api/v1/references/{document_id}/download", headers=viewer).status_code == 404
+
+
+def test_reference_delete_is_idempotent_not_found(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(reference_store, "REFERENCE_DIR", tmp_path / "references")
+    client = build_app()
+    admin = login(client, "admin", "admin-password")
+    viewer = login(client, "viewer", "viewer-password")
+    document_id = _upload_reference(client, admin)
+
+    assert client.delete(f"/api/v1/references/{document_id}", headers=admin).status_code == 204
+    assert client.delete(f"/api/v1/references/{document_id}", headers=admin).status_code == 404
+    assert client.delete("/api/v1/references/999999", headers=admin).status_code == 404
+    assert client.delete("/api/v1/references/999999", headers=viewer).status_code == 403
+
+
+def test_reference_soft_delete_keeps_file_on_disk(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(reference_store, "REFERENCE_DIR", tmp_path / "references")
+    client = build_app()
+    admin = login(client, "admin", "admin-password")
+
+    document_id = _upload_reference(client, admin)
+    assert len(list((tmp_path / "references").iterdir())) == 1
+
+    assert client.delete(f"/api/v1/references/{document_id}", headers=admin).status_code == 204
+
+    # The physical file is retained for a future retention/purge job.
+    assert len(list((tmp_path / "references").iterdir())) == 1
+    assert client.get("/api/v1/references", headers=admin).json() == []

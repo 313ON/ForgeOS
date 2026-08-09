@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -141,7 +141,7 @@ def list_references(
     db: Session = Depends(get_db),
     _: AuthenticatedUser = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
-    query = select(ReferenceDocument)
+    query = select(ReferenceDocument).where(ReferenceDocument.deleted_at.is_(None))
     if search and search.strip():
         pattern = f"%{search.strip()}%"
         query = query.where(or_(ReferenceDocument.title.ilike(pattern), ReferenceDocument.description.ilike(pattern), ReferenceDocument.tags.ilike(pattern), ReferenceDocument.original_filename.ilike(pattern)))
@@ -186,7 +186,7 @@ def download_reference(
     _: AuthenticatedUser = Depends(get_current_user),
 ) -> FileResponse:
     document = db.get(ReferenceDocument, document_id)
-    if document is None:
+    if document is None or document.deleted_at is not None:
         raise HTTPException(404, "Reference document not found")
     try:
         path = resolve_reference(document.stored_name)
@@ -194,3 +194,21 @@ def download_reference(
         raise HTTPException(404, "Reference file not found") from error
     disposition = "inline" if preview and any(document.stored_name.casefold().endswith(ext) for ext in PREVIEW_EXTENSIONS) else "attachment"
     return FileResponse(path, media_type=document.media_type, filename=document.original_filename, content_disposition_type=disposition)
+
+
+@router.delete("/references/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_reference(
+    document_id: int,
+    db: Session = Depends(get_db),
+    _: AuthenticatedUser = Depends(require_admin),
+) -> None:
+    """Soft-delete a reference document.
+
+    The metadata row is retained for auditability, and the uploaded file is
+    kept on disk; a future retention/purge job owns physical cleanup.
+    """
+    document = db.get(ReferenceDocument, document_id)
+    if document is None or document.deleted_at is not None:
+        raise HTTPException(404, "Reference document not found")
+    document.deleted_at = func.now()
+    db.commit()
