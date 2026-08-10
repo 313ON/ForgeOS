@@ -613,7 +613,7 @@
                 <div class="mt-4 flex gap-2">
                   <button x-show="document.preview_supported" type="button" @click="openReference(document, true)" class="btn--secondary" data-i18n="references.preview">Preview</button>
                   <button type="button" @click="openReference(document, false)" class="btn--primary" data-i18n="references.download">Download</button>
-                  <button x-show="isAdmin" type="button" @click="deleteReference(document)" class="rounded-lg bg-rose-400/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-400/20" data-i18n="references.delete">Delete</button>
+                  <button x-show="isAdmin" type="button" @click="deleteReference(document)" class="btn--danger" data-i18n="references.delete">Delete</button>
                 </div>
               </article>
             </template>
@@ -623,11 +623,12 @@
             <p class="mt-1 text-sm text-secondary" x-text="referenceSearch ? translated('references.filtered_empty_help', 'Try another search term.') : translated('references.empty_help', 'An administrator can upload technical documentation.')"></p>
           </div>
 
-          <div x-show="referenceUploadModal" x-cloak @keydown.escape.window="referenceUploadModal = false" class="fixed inset-0 z-[55] grid place-items-center bg-slate-950/90 p-4 backdrop-blur-sm">
-            <div @click.outside="referenceUploadModal = false" x-transition class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+          <div x-show="referenceUploadModal" x-cloak @keydown.escape.window="referenceUploadModal = false" class="dialog-overlay">
+            <div @click.outside="referenceUploadModal = false" x-transition role="dialog" aria-modal="true" aria-labelledby="reference-upload-title"
+                 class="enterprise-panel max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl p-6 sm:p-7">
               <div class="flex items-start justify-between gap-3">
                 <div>
-                  <h3 class="text-lg font-semibold text-white" data-i18n="references.upload_title">Upload reference document</h3>
+                  <h3 id="reference-upload-title" class="text-lg font-semibold text-white" data-i18n="references.upload_title">Upload reference document</h3>
                   <p class="mt-1 text-sm text-secondary" data-i18n="references.upload_help">PDF, images, text, CSV and Office documents up to 25 MB.</p>
                 </div>
                 <button @click="referenceUploadModal = false" class="rounded-lg p-2 text-muted hover:bg-slate-800 hover:text-white" aria-label="Close upload dialog">
@@ -635,29 +636,29 @@
                 </button>
               </div>
               <form @submit.prevent="saveReferenceUpload()" class="mt-5 grid gap-4">
-                <label>
-                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_title">Title</span>
-                  <input x-model="referenceUploadForm.title" required class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/10">
-                </label>
-                <label>
-                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_category">Category</span>
-                  <input x-model="referenceUploadForm.category" class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/10">
-                </label>
-                <label>
-                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_tags">Tags</span>
-                  <input x-model="referenceUploadForm.tags" :placeholder="translated('references.placeholder_tags', 'comma, separated, tags')" class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/10">
-                </label>
-                <label>
-                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_description">Description</span>
-                  <textarea x-model="referenceUploadForm.description" rows="2" class="w-full rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/10"></textarea>
-                </label>
-                <label>
-                  <span class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400" data-i18n="references.field_file">File</span>
-                  <input @change="onReferenceFileSelect($event)" type="file" class="block w-full cursor-pointer rounded-lg border border-slate-700/80 bg-slate-950/70 text-sm text-slate-400 file:mr-4 file:border-0 file:bg-cyan-400/10 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-cyan-300">
-                  <span x-show="referenceFileError" class="mt-1.5 block text-xs text-rose-400" x-text="referenceFileError"></span>
-                  <span x-show="referenceUploadForm.file" class="mt-2 block text-xs text-cyan-300" x-text="referenceUploadForm.file ? referenceUploadForm.file.name : ''"></span>
-                </label>
-                <div class="flex justify-end gap-3 border-t border-slate-800 pt-5">
+                <div class="field">
+                  <label class="field__label" for="reference-title" data-i18n="references.field_title">Title</label>
+                  <input id="reference-title" x-ref="referenceTitleInput" x-model="referenceUploadForm.title" required class="control">
+                </div>
+                <div class="field">
+                  <label class="field__label" for="reference-category" data-i18n="references.field_category">Category</label>
+                  <input id="reference-category" x-model="referenceUploadForm.category" class="control">
+                </div>
+                <div class="field">
+                  <label class="field__label" for="reference-tags" data-i18n="references.field_tags">Tags</label>
+                  <input id="reference-tags" x-model="referenceUploadForm.tags" :placeholder="translated('references.placeholder_tags', 'comma, separated, tags')" class="control">
+                </div>
+                <div class="field">
+                  <label class="field__label" for="reference-description" data-i18n="references.field_description">Description</label>
+                  <textarea id="reference-description" x-model="referenceUploadForm.description" rows="2" class="control"></textarea>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="reference-file" data-i18n="references.field_file">File</label>
+                  <input id="reference-file" @change="onReferenceFileSelect($event)" type="file" class="file-control">
+                  <span x-show="referenceFileError" class="field__error" x-text="referenceFileError"></span>
+                  <span x-show="referenceUploadForm.file" class="mt-1 text-xs text-cyan-300" x-text="referenceUploadForm.file ? referenceUploadForm.file.name : ''"></span>
+                </div>
+                <div class="form-shell__footer">
                   <button type="button" @click="referenceUploadModal = false" class="btn--secondary" data-i18n="modal.cancel">Cancel</button>
                   <button type="submit" :disabled="referenceUploading" class="btn--primary" x-text="referenceUploading ? translated('references.uploading', 'Uploading…') : translated('references.upload', 'Upload')"></button>
                 </div>
@@ -887,7 +888,7 @@
               </div>
             </div>
 
-            <form x-show="showTopologyLinkForm && isAdmin" @submit.prevent="saveTopologyLink()" class="surface mb-4 grid gap-4 p-5 md:grid-cols-2 mx-5" style="border-color: rgba(6,182,212,0.2);">
+            <form x-show="showTopologyLinkForm && isAdmin" @submit.prevent="saveTopologyLink()" class="form-shell mb-4 grid gap-4 p-5 md:grid-cols-2 mx-5">
               <div class="field">
                 <label class="field__label" for="topo-source" data-i18n="topology.source">Source asset</label>
                 <select id="topo-source" x-model="topologyLinkForm.source_id" required class="control">
@@ -924,7 +925,7 @@
             </form>
 
             <div class="px-5 pb-5">
-              <div class="overflow-x-auto">
+              <div class="table-scroll">
                 <table class="table table--compact w-full">
                   <thead>
                     <tr>
@@ -938,18 +939,20 @@
                   <tbody>
                     <template x-for="link in topology.links" :key="link.id">
                       <tr>
-                        <td x-text="topologyAssetName(link.source_id)"></td>
-                        <td x-text="topologyAssetName(link.target_id)"></td>
-                        <td x-text="link.link_type"></td>
-                        <td x-text="link.label || '—'"></td>
-                        <td x-show="isAdmin" class="whitespace-nowrap">
-                          <button @click="editTopologyLink(link)" class="btn--ghost btn--xs" data-i18n="topology.edit">Edit</button>
-                          <button @click="deleteTopologyLink(link)" class="btn--danger btn--xs" data-i18n="topology.delete">Delete</button>
+                        <td class="technical-value truncate" x-text="topologyAssetName(link.source_id)" :title="topologyAssetName(link.source_id)"></td>
+                        <td class="technical-value truncate" x-text="topologyAssetName(link.target_id)" :title="topologyAssetName(link.target_id)"></td>
+                        <td><span class="status-chip capitalize" x-text="link.link_type"></span></td>
+                        <td class="truncate" x-text="link.label || '—'" :title="link.label || ''"></td>
+                        <td x-show="isAdmin" class="text-end">
+                          <div class="table-actions">
+                            <button @click="editTopologyLink(link)" class="btn--ghost" data-i18n="topology.edit">Edit</button>
+                            <button @click="deleteTopologyLink(link)" class="btn--danger" data-i18n="topology.delete">Delete</button>
+                          </div>
                         </td>
                       </tr>
                     </template>
                     <tr x-show="!topology.links.length">
-                      <td colspan="5" class="py-4 text-center text-sm text-muted" data-i18n="topology.no_links">No links configured.</td>
+                      <td colspan="5" class="table-state" data-i18n="topology.no_links">No links configured.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -970,7 +973,7 @@
             </template>
           </div>
 
-          <form x-show="showTargetForm && isAdmin" @submit.prevent="saveTarget()" class="surface mb-6 grid gap-4 p-5 md:grid-cols-2" style="border-color: rgba(6,182,212,0.2);">
+          <form x-show="showTargetForm && isAdmin" @submit.prevent="saveTarget()" class="form-shell mb-6 grid gap-4 p-5 md:grid-cols-2">
             <div class="field">
               <label class="field__label" for="target-name" data-i18n="monitoring.target_name">Target name</label>
               <input id="target-name" x-model="targetForm.name" required class="control" :placeholder="translated('monitoring.target_name_placeholder', 'Primary website or gateway')">
@@ -1258,9 +1261,9 @@
         <section x-show="page === 'import'" x-cloak x-transition.opacity>
           <div class="action-bar">
             <div class="action-bar__text">
-              <p class="section-label text-cyan-400">SYSTEM INGESTION</p>
-              <h2 class="page-title">Import a Windows report</h2>
-              <p class="page-subtitle">Drop a DxDiag.txt or systeminfo.txt report. Parsing runs locally and deterministically.</p>
+              <p class="section-label text-cyan-400" data-i18n="import.overline">SYSTEM INGESTION</p>
+              <h2 class="page-title" data-i18n="import.title">Import a Windows report</h2>
+              <p class="page-subtitle" data-i18n="import.help">Drop a DxDiag.txt or systeminfo.txt report. Parsing runs locally and deterministically.</p>
             </div>
           </div>
           <div class="grid gap-6 xl:grid-cols-[.9fr_1.1fr]">
@@ -1268,21 +1271,21 @@
               <div @dragover.prevent="dragging = true" @dragleave.prevent="dragging = false" @drop.prevent="handleDrop($event)"
                    class="relative flex min-h-80 flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-slate-900/55 p-8 text-center backdrop-blur-md transition"
                    :class="dragging ? 'border-cyan-400 bg-cyan-400/5 status-glow--info' : 'border-slate-700 hover:border-slate-600'">
-                <input x-ref="fileInput" @change="selectFile($event.target.files[0])" type="file" accept=".txt,text/plain" class="hidden">
+                <input x-ref="fileInput" @change="selectFile($event.target.files[0])" type="file" accept=".txt,.log,text/plain" class="hidden">
                 <div class="grid h-16 w-16 place-items-center rounded-md border border-cyan-300/25 bg-[#1D2129] text-cyan-300">
                   <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
                 </div>
-                <p class="mt-5 font-semibold text-white" x-text="selectedFile ? selectedFile.name : 'Drop your report here'"></p>
-                <p class="mt-2 text-sm text-secondary">TXT only · up to 5 MB</p>
-                <button @click="$refs.fileInput.click()" class="mt-6 rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-2.5 text-sm font-medium text-cyan-300 transition hover:bg-cyan-400/15">Choose File</button>
+                <p class="mt-5 font-semibold text-white" x-text="selectedFile ? selectedFile.name : translated('import.drop', 'Drop your report here')"></p>
+                <p class="mt-2 text-sm text-secondary" data-i18n="import.txt_limit">TXT / LOG · up to 5 MB</p>
+                <button @click="$refs.fileInput.click()" class="mt-6 rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-2.5 text-sm font-medium text-cyan-300 transition hover:bg-cyan-400/15" data-i18n="import.choose">Choose File</button>
               </div>
               <div x-show="uploading" class="mt-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-                <div class="flex justify-between text-xs"><span class="text-slate-400">Parsing and storing report</span><span class="text-cyan-300" x-text="uploadProgress + '%'"></span></div>
+                <div class="flex justify-between text-xs"><span class="text-slate-400" data-i18n="import.parsing">Parsing and storing report</span><span class="text-cyan-300" x-text="uploadProgress + '%'"></span></div>
                 <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-cyan-300 transition-all duration-150" :style="`width: ${uploadProgress}%`"></div></div>
               </div>
               <button x-show="isAdmin" @click="uploadReport()" :disabled="!selectedFile || uploading"
                       class="btn--primary w-full mt-4 disabled:cursor-not-allowed">
-                <span x-text="uploading ? 'Importing…' : 'Import & Analyze'"></span>
+                <span x-text="uploading ? translated('import.importing', 'Importing…') : translated('import.analyze', 'Import & Analyze')"></span>
               </button>
             </div>
 
@@ -1291,19 +1294,19 @@
                 <div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-800/70 text-secondary">
                   <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z"/><path d="M14 3v6h6M8 14h8M8 17h5"/></svg>
                 </div>
-                <p class="mt-4 font-medium text-slate-300">Analysis results</p>
-                <p class="mt-2 max-w-xs text-sm leading-6 text-secondary">Parsed hardware fields and the recommended ForgeOS profile appear here.</p>
+                <p class="mt-4 font-medium text-slate-300" data-i18n="import.results">Analysis results</p>
+                <p class="mt-2 max-w-xs text-sm leading-6 text-secondary" data-i18n="import.results_help">Parsed hardware fields and the recommended ForgeOS profile appear here.</p>
               </div>
               <div x-show="importResult" x-cloak>
                 <div class="flex flex-col gap-4 border-b border-slate-800/70 pb-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p class="text-xs font-medium uppercase tracking-wider text-muted">Recommended Profile</p>
+                    <p class="text-xs font-medium uppercase tracking-wider text-muted" data-i18n="profile.recommended">Recommended Profile</p>
                     <div class="mt-2 inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-lg font-semibold text-emerald-300 status-glow--ok">
                       <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981]"></span>
                       <span x-text="profileLabel(importResult?.suggested_profile)"></span>
                     </div>
                   </div>
-                  <div class="text-left sm:text-right"><p class="text-xs text-secondary">Source</p><p class="mt-1 font-mono text-sm text-cyan-300" x-text="importResult?.provider?.name || importResult?.sources?.[0]?.format || 'Unknown'"></p></div>
+                  <div class="text-left sm:text-right"><p class="text-xs text-secondary" data-i18n="profile.source">Source</p><p class="mt-1 font-mono text-sm text-cyan-300" x-text="importResult?.provider?.name || importResult?.sources?.[0]?.format || translated('common.unknown', 'Unknown')"></p></div>
                 </div>
                 <div class="mt-5 grid gap-3 sm:grid-cols-2">
                   <template x-for="field in parsedFields" :key="field.key">
@@ -2462,6 +2465,7 @@ async openReference(document, preview = false) {
           this.referenceUploadForm = { title: "", category: "Other", tags: "", description: "", file: null };
           this.referenceFileError = "";
           this.referenceUploadModal = true;
+          this.$nextTick(() => this.$refs.referenceTitleInput?.focus());
         },
         onReferenceFileSelect(event) {
           let file = event.target.files[0] || null;
@@ -3121,7 +3125,7 @@ async openReference(document, preview = false) {
         async exportPdf() { try { await window.forgeApi.download(`/api/export/pdf?lang=${this.language}`, "forgeos-assets.pdf"); } catch (error) { this.toast(error.message, "error"); } },
         selectFile(file) {
           if (!file) return;
-          if (!file.name.toLowerCase().endsWith(".txt")) { this.toast("Choose a .txt report", "error"); return; }
+          if (!file.name.toLowerCase().endsWith(".txt") && !file.name.toLowerCase().endsWith(".log")) { this.toast(this.translated("common.choose_txt", "Choose a .txt or .log report"), "error"); return; }
           this.selectedFile = file; this.importResult = null;
         },
         handleDrop(event) { this.dragging = false; this.selectFile(event.dataTransfer.files[0]); },
@@ -3141,7 +3145,7 @@ async openReference(document, preview = false) {
         },
         displayParsed(key) {
           const value = this.importResult?.parsed?.[key] ?? this.importResult?.parsed_fields?.[key];
-          if (value === null || value === undefined || value === "") return "Not detected";
+          if (value === null || value === undefined || value === "") return this.translated("common.not_detected", "Not detected");
           return key === "ram_mb" ? `${Number(value).toLocaleString()} MB` : value;
         },
         profileLabel(profile) {
